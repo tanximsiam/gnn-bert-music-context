@@ -34,6 +34,13 @@ implemented and evaluated end-to-end:
 - Per-tag classification thresholds are tuned on validation probabilities only, then
   frozen for test.
 
+## Modeling decisions
+
+- Task 2 genre head uses **softmax + CrossEntropyLoss**, not the sigmoid/BCE written in
+  the spec's general multi-label formula: FMA `genre_top` is single-label/mutually
+  exclusive (one genre per track), so softmax+CE is the mathematically correct loss —
+  BCE-per-class would incorrectly treat genres as independent binary decisions.
+
 ## Repository structure
 
 ```

@@ -31,9 +31,11 @@ from src.cnn_baseline import MelSpecCNN, MelSpecDataset
 from src.datasets import (
     build_task1_dataset,
     build_task1_top_tags,
+    build_task3_dataset,
     load_corrupted_track_ids,
     load_fma_metadata,
     load_fma_splits,
+    task3_label_names,
 )
 from src.gnn_model import GNNGenreClassifier
 from src.graph_builder import SegmentGraphDataset, build_genre_label_map, build_or_load_track_graph
@@ -454,8 +456,9 @@ def train_cnn_baseline(
 
 def train_task3(config: dict[str, Any], run_dir: Path, logger) -> None:
     """Task 3: GNN+BERT fusion ablations (BERT-only, GNN-only, early-concat,
-    cross-attention) on the same Task 1 tagged subset/splits, so
-    all four variants are directly comparable."""
+    cross-attention) predicting genre + mood/contextual tags jointly (spec
+    section 4.3), on the same tagged subset/splits so all four variants are
+    directly comparable."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info("device: %s", device)
 
@@ -464,9 +467,11 @@ def train_task3(config: dict[str, Any], run_dir: Path, logger) -> None:
     corrupted_ids = load_corrupted_track_ids()
     splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
     top_tags = build_task1_top_tags(tracks[tracks["track_id"].isin(splits["train"])], top_k=20)
-    logger.info("Task 3 target tag vocabulary (top-20, from TRAIN only): %s", top_tags)
+    genre_label_map = build_genre_label_map(tracks)
+    label_names = task3_label_names(top_tags, genre_label_map)
+    logger.info("Task 3 target vocabulary (%d genres + top-20 tags, from TRAIN only): %s", len(genre_label_map), label_names)
 
-    task_df = build_task1_dataset(tracks, top_tags)
+    task_df = build_task3_dataset(tracks, top_tags, genre_label_map)
     split_of = {tid: name for name, ids in splits.items() for tid in ids}
     task_df = task_df.assign(split=task_df["track_id"].map(split_of))
     task_df = task_df[task_df["split"].notna()]
@@ -508,7 +513,7 @@ def train_task3(config: dict[str, Any], run_dir: Path, logger) -> None:
     test_loader = TorchDataLoader(test_ds, batch_size=batch_size, shuffle=False, collate_fn=fusion_collate)
 
     in_dim = 2 * config["audio"]["n_mfcc"] + (24 if config["audio"]["use_chroma"] else 0)
-    num_labels = len(top_tags)
+    num_labels = len(label_names)
 
     def mean_auc_pr(labels: np.ndarray, probs: np.ndarray) -> float:
         scores = [
@@ -646,6 +651,7 @@ def train_task3(config: dict[str, Any], run_dir: Path, logger) -> None:
 
     metrics = {
         "top_tags": top_tags,
+        "label_names": label_names,
         "dataset_sizes": {"train": len(train_df), "val": len(val_df), "test": len(test_df)},
         "ablations": all_results,
     }

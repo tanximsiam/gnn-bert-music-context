@@ -175,6 +175,31 @@ def build_task1_dataset(tracks_df: pd.DataFrame, top_tags: list[str]) -> pd.Data
     return tagged.apply(make_row, axis=1)
 
 
+def build_task3_dataset(
+    tracks_df: pd.DataFrame, top_tags: list[str], genre_label_map: dict[str, int]
+) -> pd.DataFrame:
+    """Build the Task 3 multi-context dataset: target = genre (one-hot) CONCATENATED
+    with the top-K contextual tags (multi-hot), so the fusion ablations jointly predict
+    "genre + mood tags" (spec section 4.3) instead of only the bare tag vocabulary.
+    """
+    base = build_task1_dataset(tracks_df, top_tags)
+    genre_names = sorted(genre_label_map, key=genre_label_map.get)
+    genre_of = dict(zip(tracks_df["track_id"], tracks_df["genre_top"]))
+
+    def add_genre(row: pd.Series) -> list[int]:
+        genre_onehot = [1 if g == genre_of[row["track_id"]] else 0 for g in genre_names]
+        return genre_onehot + list(row["labels"])
+
+    base = base.copy()
+    base["labels"] = base.apply(add_genre, axis=1)
+    return base
+
+
+def task3_label_names(top_tags: list[str], genre_label_map: dict[str, int]) -> list[str]:
+    """Combined label vocabulary matching build_task3_dataset's label vector order."""
+    genre_names = sorted(genre_label_map, key=genre_label_map.get)
+    return [f"genre:{g}" for g in genre_names] + list(top_tags)
+
 
 def load_musiccaps(*args, **kwargs):
     raise NotImplementedError(

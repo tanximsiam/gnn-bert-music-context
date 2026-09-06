@@ -34,6 +34,11 @@ gnn:
   hidden_dim: 128
   num_layers: 3
   dropout: 0.3
+  # Genre head uses softmax + CrossEntropyLoss, not the sigmoid/BCE written in the
+  # spec's general multi-label equation: FMA genre_top is single-label/mutually
+  # exclusive (one genre per track), and softmax+CE is the standard, strictly
+  # correct loss for that case (BCE-per-class would treat genres as independent
+  # binary decisions, which they are not). See src/train.py:train_task2.
 
 fusion:
   mode: cross_attention       # early_concat | cross_attention

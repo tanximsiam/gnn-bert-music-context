@@ -27,15 +27,24 @@ from transformers import AutoTokenizer
 from src.bert_encoder import BertTagClassifier
 from src.datasets import (
     build_task1_dataset,
+    build_task3_dataset,
     load_corrupted_track_ids,
     load_fma_metadata,
     load_fma_splits,
 )
 from src.fusion_model import FusionModel
 from src.gnn_model import GNNGenreClassifier
-from src.graph_builder import SegmentGraphDataset, build_or_load_track_graph
+from src.graph_builder import SegmentGraphDataset, build_genre_label_map, build_or_load_track_graph
 from src.train import MultiModalTagDataset, TagTextDataset, fusion_collate
 from src.utils import get_logger, load_config
+
+# Curated mood/atmosphere descriptors used to color Task 3's t-SNE plot (spec: "genre and
+# mood"). Intersected at runtime with whatever top-K tags were actually selected, since the
+# tag vocabulary is data-driven (top-20 by frequency on TRAIN), not fixed in advance.
+MOOD_KEYWORDS = {
+    "psychedelic", "horror", "noise", "experimental", "ambient", "dark", "melancholic",
+    "uplifting", "energetic", "calm", "dreamy", "eerie", "peaceful", "happy", "sad", "angry",
+}
 
 
 def _mean_auc_pr(labels: np.ndarray, probs: np.ndarray) -> float:
@@ -177,14 +186,17 @@ def run_task3_analysis(config: dict, checkpoint_path: str, logger) -> None:
     with metrics_path.open() as f:
         task3_metrics = json.load(f)
     top_tags = task3_metrics["top_tags"]
-    num_labels = len(top_tags)
+    label_names = task3_metrics.get("label_names", top_tags)
+    num_labels = len(label_names)
+    num_genres = sum(1 for name in label_names if name.startswith("genre:"))
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     subset = config["dataset"]["name"].replace("fma_", "")
     tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset=subset)
     corrupted_ids = load_corrupted_track_ids()
     splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
-    task_df = build_task1_dataset(tracks, top_tags)
+    genre_label_map = build_genre_label_map(tracks)
+    task_df = build_task3_dataset(tracks, top_tags, genre_label_map)
     split_of = {tid: name for name, ids in splits.items() for tid in ids}
     task_df = task_df.assign(split=task_df["track_id"].map(split_of))
     test_df = task_df[task_df["split"] == "test"].reset_index(drop=True)
@@ -217,7 +229,7 @@ def run_task3_analysis(config: dict, checkpoint_path: str, logger) -> None:
     model.load_state_dict(torch.load(checkpoint_path, map_location=device))
     model.eval()
 
-    all_z, all_genres, all_track_ids = [], [], []
+    all_z, all_track_ids = [], []
     with torch.no_grad():
         for batch in test_loader:
             g = batch["graph_batch"].to(device)
@@ -229,23 +241,48 @@ def run_task3_analysis(config: dict, checkpoint_path: str, logger) -> None:
     genre_by_track = dict(zip(tracks["track_id"], tracks["genre_top"]))
     all_genres = [genre_by_track[tid] for tid in all_track_ids]
 
+    # Mood proxy: whichever curated mood-ish tag (if any) is positive in this track's
+    # label vector, drawn from the top-K tag vocabulary itself (DEAM valence/arousal
+    # would be the ideal mood signal per spec, but DEAM isn't available — see config.yaml).
+    labels_by_track = dict(zip(test_df["track_id"], test_df["labels"]))
+    mood_tags = [t for t in top_tags if t.lower() in MOOD_KEYWORDS]
+    tag_start = num_genres
+
+    def mood_of(track_id: int) -> str:
+        labels = labels_by_track[track_id]
+        for tag in mood_tags:
+            idx = tag_start + top_tags.index(tag)
+            if labels[idx] == 1:
+                return tag
+        return "none"
+
+    all_moods = [mood_of(tid) for tid in all_track_ids]
+
     logger.info("Running t-SNE on %d test embeddings (dim=%d)...", len(all_z), all_z.shape[1])
     z_2d = TSNE(n_components=2, random_state=42, init="pca", perplexity=min(30, len(all_z) - 1)).fit_transform(all_z)
 
+    fig, axes = plt.subplots(1, 2, figsize=(17, 7))
     unique_genres = sorted(set(all_genres))
     cmap = plt.get_cmap("tab20", len(unique_genres))
-    plt.figure(figsize=(9, 7))
     for i, genre in enumerate(unique_genres):
         idx = [j for j, g_ in enumerate(all_genres) if g_ == genre]
-        plt.scatter(z_2d[idx, 0], z_2d[idx, 1], s=12, color=cmap(i), label=genre)
-    plt.legend(fontsize=6, markerscale=2, bbox_to_anchor=(1.02, 1), loc="upper left")
-    plt.title("t-SNE of cross-attention fused embedding z (test set, colored by genre)")
-    plt.tight_layout()
-    plt.savefig(run_dir / "tsne_genre.png", dpi=150)
-    plt.close()
-    logger.info("Saved t-SNE plot to %s", run_dir / "tsne_genre.png")
+        axes[0].scatter(z_2d[idx, 0], z_2d[idx, 1], s=12, color=cmap(i), label=genre)
+    axes[0].legend(fontsize=6, markerscale=2, bbox_to_anchor=(1.02, 1), loc="upper left")
+    axes[0].set_title("t-SNE of fused embedding z, colored by genre")
 
-    _save_case_studies(config, run_dir, task3_metrics, tracks, test_df, top_tags, device, logger)
+    unique_moods = sorted(set(all_moods))
+    mood_cmap = plt.get_cmap("tab10", len(unique_moods))
+    for i, mood in enumerate(unique_moods):
+        idx = [j for j, m_ in enumerate(all_moods) if m_ == mood]
+        axes[1].scatter(z_2d[idx, 0], z_2d[idx, 1], s=12, color=mood_cmap(i), label=mood)
+    axes[1].legend(fontsize=7, markerscale=2, bbox_to_anchor=(1.02, 1), loc="upper left")
+    axes[1].set_title("t-SNE of fused embedding z, colored by mood tag")
+    plt.tight_layout()
+    plt.savefig(run_dir / "tsne_genre_mood.png", dpi=150)
+    plt.close()
+    logger.info("Saved t-SNE plot to %s", run_dir / "tsne_genre_mood.png")
+
+    _save_case_studies(config, run_dir, task3_metrics, tracks, test_df, top_tags, label_names, device, logger)
 
 
 def _load_variant_model(variant: str, config: dict, run_dir: Path, num_labels: int, in_dim: int, device: str):
@@ -272,14 +309,28 @@ def _load_variant_model(variant: str, config: dict, run_dir: Path, num_labels: i
     return model
 
 
-def _save_case_studies(config, run_dir, task3_metrics, tracks, test_df, top_tags, device, logger) -> None:
-    """3 case studies: graph structure + text + true tags vs. each
-    ablation variant's predicted tags (using its own tuned thresholds)."""
+def _graph_path_summary(edge_index: torch.Tensor) -> dict:
+    """Break edge_index into the temporal chain (deterministic |i-j|==1 edges) and
+    the sparse similarity "shortcut" edges, for a human-readable graph-path view."""
+    src, dst = edge_index[0].tolist(), edge_index[1].tolist()
+    temporal = sorted({(min(s, d), max(s, d)) for s, d in zip(src, dst) if abs(s - d) == 1})
+    similarity = sorted({(min(s, d), max(s, d)) for s, d in zip(src, dst) if abs(s - d) > 1})
+    return {
+        "temporal_path": [f"seg{a}->seg{b}" for a, b in temporal],
+        "similarity_shortcuts": [f"seg{a}~seg{b}" for a, b in similarity],
+    }
+
+
+def _save_case_studies(config, run_dir, task3_metrics, tracks, test_df, top_tags, label_names, device, logger) -> None:
+    """3 case studies: graph path (temporal chain + similarity shortcuts) + text +
+    true tags vs. each ablation variant's predicted tags (own tuned thresholds),
+    plus cross-attention's graph-query -> text-token alignment weights (spec:
+    "graph paths + caption/lyric alignment")."""
     rng = np.random.RandomState(42)
     sample_rows = test_df.iloc[rng.choice(len(test_df), size=min(3, len(test_df)), replace=False)]
 
     in_dim = 2 * config["audio"]["n_mfcc"] + (24 if config["audio"]["use_chroma"] else 0)
-    num_labels = len(top_tags)
+    num_labels = len(label_names)
     variants = ["gnn_only", "bert_only", "early_concat", "cross_attention"]
     models = {v: _load_variant_model(v, config, run_dir, num_labels, in_dim, device) for v in variants}
     thresholds = {v: np.array(task3_metrics["ablations"][v]["per_tag_thresholds"]) for v in variants}
@@ -301,8 +352,9 @@ def _save_case_studies(config, run_dir, task3_metrics, tracks, test_df, top_tags
         g_batch.batch = torch.zeros(g_batch.x.size(0), dtype=torch.long)
         gx, gei, gb = g_batch.x.to(device), g_batch.edge_index.to(device), g_batch.batch.to(device)
 
-        true_tags = [top_tags[k] for k in range(num_labels) if row["labels"][k] == 1]
+        true_tags = [label_names[k] for k in range(num_labels) if row["labels"][k] == 1]
         predictions = {}
+        text_alignment = None
         with torch.no_grad():
             for variant, model in models.items():
                 if variant == "gnn_only":
@@ -312,19 +364,27 @@ def _save_case_studies(config, run_dir, task3_metrics, tracks, test_df, top_tags
                 else:
                     logits = model(gx, gei, gb, input_ids, attention_mask)
                 probs = torch.sigmoid(logits)[0].cpu().numpy()
-                pred_tags = [top_tags[k] for k in range(num_labels) if probs[k] >= thresholds[variant][k]]
+                pred_tags = [label_names[k] for k in range(num_labels) if probs[k] >= thresholds[variant][k]]
                 predictions[variant] = pred_tags
+                if variant == "cross_attention":
+                    attn = model.attention_over_tokens(gx, gei, gb, input_ids, attention_mask)[0].cpu().numpy()
+                    tokens = tokenizer.convert_ids_to_tokens(input_ids[0].cpu().tolist())
+                    top_k = attn.argsort()[::-1][:10]
+                    text_alignment = [
+                        {"token": tokens[i], "weight": round(float(attn[i]), 4)}
+                        for i in top_k if tokens[i] not in ("[PAD]", "[CLS]", "[SEP]")
+                    ]
 
-        num_temporal = int((graph.edge_index[0] - graph.edge_index[1]).abs().eq(1).sum().item())
         case_studies.append({
             "track_id": int(track_id),
             "genre": tracks.set_index("track_id").loc[track_id, "genre_top"],
             "text": row["text"][:300],
+            "graph_path": _graph_path_summary(graph.edge_index),
             "num_graph_nodes": int(graph.x.shape[0]),
             "num_graph_edges": int(graph.edge_index.shape[1]),
-            "num_temporal_edges_approx": num_temporal,
             "true_tags": true_tags,
             "predicted_tags_by_variant": predictions,
+            "cross_attention_text_alignment": text_alignment,
         })
 
     with (run_dir / "case_studies.json").open("w") as f:
