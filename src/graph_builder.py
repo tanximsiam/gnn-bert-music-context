@@ -132,6 +132,50 @@ def build_genre_label_map(tracks_df: pd.DataFrame) -> dict[str, int]:
     return {genre: idx for idx, genre in enumerate(genres)}
 
 
+def build_or_load_audio_graph(
+    clip_id: str,
+    audio_path: str | Path,
+    cache_dir: str | Path,
+    sample_rate: int,
+    segment_seconds: float,
+    n_mfcc: int,
+    use_chroma: bool,
+    similarity_threshold: float,
+    bidirectional: bool,
+    self_loops: bool,
+) -> Data:
+    """Build (or load from cache) a segment graph for an arbitrary audio file,
+    keyed by an opaque `clip_id` string rather than an FMA track_id — used for
+    MusicCaps clips, which don't follow FMA's <track_id>.mp3 directory layout.
+
+    The cache filename embeds a short hash of every parameter that affects the
+    resulting graph/features, so changing segment length, MFCC count, chroma,
+    tau, etc. automatically invalidates stale cached graphs instead of silently
+    reusing them.
+    """
+    cache_key = hashlib.sha1(
+        f"{sample_rate}-{segment_seconds}-{n_mfcc}-{use_chroma}-"
+        f"{similarity_threshold}-{bidirectional}-{self_loops}".encode()
+    ).hexdigest()[:8]
+    cache_path = Path(cache_dir) / f"{clip_id}_{cache_key}.pt"
+    if cache_path.exists():
+        return torch.load(cache_path, weights_only=False)
+
+    waveform = load_audio(str(audio_path), sample_rate=sample_rate)
+    segments = segment_audio(waveform, sample_rate, segment_seconds)
+    features = np.stack(
+        [extract_segment_features(s, sample_rate, n_mfcc, use_chroma) for s in segments]
+    )
+    graph = build_segment_graph(features, similarity_threshold, bidirectional, self_loops)
+
+    data = Data(x=torch.tensor(graph["x"]), edge_index=torch.tensor(graph["edge_index"]))
+    data.clip_id = clip_id
+    cache_dir_path = Path(cache_dir)
+    cache_dir_path.mkdir(parents=True, exist_ok=True)
+    torch.save(data, cache_path)
+    return data
+
+
 def build_or_load_track_graph(
     track_id: int,
     audio_root: str | Path,
@@ -144,35 +188,17 @@ def build_or_load_track_graph(
     bidirectional: bool,
     self_loops: bool,
 ) -> Data:
-    """Build a track's segment graph (or load it from cache if already built).
-
-    The cache filename embeds a short hash of every parameter that affects the
-    resulting graph/features, so changing segment length, MFCC count, chroma,
-    tau, etc. automatically invalidates stale cached graphs instead of silently
-    reusing them.
-    """
-    cache_key = hashlib.sha1(
-        f"{sample_rate}-{segment_seconds}-{n_mfcc}-{use_chroma}-"
-        f"{similarity_threshold}-{bidirectional}-{self_loops}".encode()
-    ).hexdigest()[:8]
-    cache_path = Path(cache_dir) / f"{track_id:06d}_{cache_key}.pt"
-    if cache_path.exists():
-        return torch.load(cache_path, weights_only=False)
-
-    path = track_audio_path(track_id, audio_root)
-    waveform = load_audio(str(path), sample_rate=sample_rate)
-    segments = segment_audio(waveform, sample_rate, segment_seconds)
-    features = np.stack(
-        [extract_segment_features(s, sample_rate, n_mfcc, use_chroma) for s in segments]
+    """Build an FMA track's segment graph (or load it from cache if already
+    built). Thin wrapper around build_or_load_audio_graph using FMA's
+    track_id-based path/cache-key convention, with an int `track_id` attribute
+    for backward compatibility with existing FMA-based code."""
+    data = build_or_load_audio_graph(
+        f"{track_id:06d}", track_audio_path(track_id, audio_root), cache_dir, sample_rate,
+        segment_seconds, n_mfcc, use_chroma, similarity_threshold, bidirectional, self_loops,
     )
-    graph = build_segment_graph(features, similarity_threshold, bidirectional, self_loops)
-
-    data = Data(x=torch.tensor(graph["x"]), edge_index=torch.tensor(graph["edge_index"]))
     data.track_id = track_id
-    cache_dir_path = Path(cache_dir)
-    cache_dir_path.mkdir(parents=True, exist_ok=True)
-    torch.save(data, cache_path)
     return data
+
 
 
 class SegmentGraphDataset(Dataset):

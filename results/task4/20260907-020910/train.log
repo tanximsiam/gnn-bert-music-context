@@ -1,0 +1,42 @@
+2026-09-07 02:09:10,296 [train.task4] INFO: Run directory: results/task4/20260907-020910
+2026-09-07 02:09:10,296 [train.task4] INFO: device: cuda
+2026-09-07 02:09:10,419 [train.task4] INFO: MusicCaps clips with downloaded audio: 4814 / 5521
+2026-09-07 02:09:11,108 [train.task4] INFO: Task 4 dataset sizes: train=2070 val=230 test=2514
+2026-09-07 02:09:18,055 [train.task4] INFO: [contrastive] epoch 0: train_loss=3.4753 val_loss=5.3818 val_r10=0.0739
+2026-09-07 02:09:22,752 [train.task4] INFO: [contrastive] epoch 1: train_loss=3.3816 val_loss=5.1882 val_r10=0.0870
+2026-09-07 02:09:27,456 [train.task4] INFO: [contrastive] epoch 2: train_loss=3.2615 val_loss=5.1336 val_r10=0.1000
+2026-09-07 02:09:35,731 [train.task4] INFO: [contrastive] epoch 3: train_loss=3.1872 val_loss=5.0634 val_r10=0.1217
+2026-09-07 02:09:40,440 [train.task4] INFO: [contrastive] epoch 4: train_loss=3.1560 val_loss=5.0255 val_r10=0.1391
+2026-09-07 02:09:44,811 [train.task4] INFO: [contrastive] epoch 5: train_loss=3.1009 val_loss=4.9813 val_r10=0.1609
+2026-09-07 02:09:49,196 [train.task4] INFO: [contrastive] epoch 6: train_loss=3.0389 val_loss=4.9355 val_r10=0.1870
+2026-09-07 02:09:53,750 [train.task4] INFO: [contrastive] epoch 7: train_loss=3.0310 val_loss=4.9838 val_r10=0.1957
+2026-09-07 02:09:58,199 [train.task4] INFO: [contrastive] epoch 8: train_loss=3.0099 val_loss=4.8943 val_r10=0.2087
+2026-09-07 02:10:02,742 [train.task4] INFO: [contrastive] epoch 9: train_loss=2.9805 val_loss=4.8762 val_r10=0.1870
+2026-09-07 02:10:10,676 [train.task4] INFO: [contrastive] epoch 10: train_loss=2.9415 val_loss=4.9104 val_r10=0.1609
+2026-09-07 02:10:15,024 [train.task4] INFO: [contrastive] epoch 11: train_loss=2.9269 val_loss=4.8360 val_r10=0.2174
+2026-09-07 02:10:19,424 [train.task4] INFO: [contrastive] epoch 12: train_loss=2.9157 val_loss=4.8018 val_r10=0.2043
+2026-09-07 02:10:23,752 [train.task4] INFO: [contrastive] epoch 13: train_loss=2.8561 val_loss=4.8007 val_r10=0.2217
+2026-09-07 02:10:28,232 [train.task4] INFO: [contrastive] epoch 14: train_loss=2.8728 val_loss=4.7707 val_r10=0.2261
+2026-09-07 02:10:32,564 [train.task4] INFO: [contrastive] epoch 15: train_loss=2.8361 val_loss=4.7802 val_r10=0.2217
+2026-09-07 02:10:36,824 [train.task4] INFO: [contrastive] epoch 16: train_loss=2.8071 val_loss=4.7452 val_r10=0.2261
+2026-09-07 02:10:44,667 [train.task4] INFO: [contrastive] epoch 17: train_loss=2.7612 val_loss=4.7338 val_r10=0.2348
+2026-09-07 02:10:48,985 [train.task4] INFO: [contrastive] epoch 18: train_loss=2.7518 val_loss=4.6914 val_r10=0.2565
+2026-09-07 02:10:53,327 [train.task4] INFO: [contrastive] epoch 19: train_loss=2.7393 val_loss=4.6314 val_r10=0.2522
+2026-09-07 02:10:57,575 [train.task4] INFO: [contrastive] epoch 20: train_loss=2.7112 val_loss=4.7471 val_r10=0.2435
+2026-09-07 02:11:01,819 [train.task4] INFO: [contrastive] epoch 21: train_loss=2.7105 val_loss=4.6284 val_r10=0.2870
+2026-09-07 02:11:06,143 [train.task4] INFO: [contrastive] epoch 22: train_loss=2.6648 val_loss=4.5869 val_r10=0.2826
+2026-09-07 02:11:10,385 [train.task4] INFO: [contrastive] epoch 23: train_loss=2.6549 val_loss=4.6067 val_r10=0.3000
+2026-09-07 02:11:14,719 [train.task4] INFO: [contrastive] epoch 24: train_loss=2.6413 val_loss=4.6305 val_r10=0.3043
+2026-09-07 02:11:22,636 [train.task4] INFO: [contrastive] epoch 25: train_loss=2.6225 val_loss=4.5790 val_r10=0.2870
+2026-09-07 02:11:26,864 [train.task4] INFO: [contrastive] epoch 26: train_loss=2.5764 val_loss=4.5696 val_r10=0.3261
+2026-09-07 02:11:31,300 [train.task4] INFO: [contrastive] epoch 27: train_loss=2.5861 val_loss=4.5526 val_r10=0.3348
+2026-09-07 02:11:35,648 [train.task4] INFO: [contrastive] epoch 28: train_loss=2.5702 val_loss=4.5658 val_r10=0.3391
+2026-09-07 02:11:39,968 [train.task4] INFO: [contrastive] epoch 29: train_loss=2.5316 val_loss=4.5627 val_r10=0.3261
+2026-09-07 02:14:01,073 [train.task4] INFO: === Task 4 retrieval (test set) ===
+2026-09-07 02:14:01,073 [train.task4] INFO: audio_to_caption_r1: 0.0036
+2026-09-07 02:14:01,073 [train.task4] INFO: audio_to_caption_r5: 0.0191
+2026-09-07 02:14:01,073 [train.task4] INFO: audio_to_caption_r10: 0.0338
+2026-09-07 02:14:01,073 [train.task4] INFO: caption_to_audio_r1: 0.0044
+2026-09-07 02:14:01,073 [train.task4] INFO: caption_to_audio_r5: 0.0231
+2026-09-07 02:14:01,073 [train.task4] INFO: caption_to_audio_r10: 0.0370
+2026-09-07 02:14:05,766 [train.task4] INFO: [zero-shot] macro_f1=0.0759 micro_f1=0.0871 (vs Task3 supervised, see metrics.json)

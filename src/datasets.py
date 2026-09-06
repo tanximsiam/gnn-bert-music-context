@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import numpy as np
 
 
 def load_fma_metadata(metadata_root: str | Path, subset: str) -> pd.DataFrame:
@@ -201,7 +202,53 @@ def task3_label_names(top_tags: list[str], genre_label_map: dict[str, int]) -> l
     return [f"genre:{g}" for g in genre_names] + list(top_tags)
 
 
-def load_musiccaps(*args, **kwargs):
-    raise NotImplementedError(
-        "Optional Task 4 extension. Requires explicit user approval to download MusicCaps."
-    )
+def load_musiccaps(csv_path: str | Path, audio_dir: str | Path) -> pd.DataFrame:
+    """Load MusicCaps metadata (google/MusicCaps on HuggingFace) and restrict to
+    rows whose 10s audio clip was successfully downloaded (see
+    src/musiccaps_prep.py — download failures for deleted/private/region-locked
+    YouTube videos are expected and simply excluded here)."""
+    csv_path = Path(csv_path)
+    if not csv_path.exists():
+        raise FileNotFoundError(f"{csv_path} not found — run `python -m src.musiccaps_prep --fetch-metadata` first.")
+    df = pd.read_csv(csv_path)
+    df["aspect_list"] = df["aspect_list"].apply(ast.literal_eval)
+    audio_dir = Path(audio_dir)
+    df["audio_path"] = df["ytid"].apply(lambda ytid: str(audio_dir / f"{ytid}.wav"))
+    df = df[df["audio_path"].apply(lambda p: Path(p).exists())].reset_index(drop=True)
+    return df
+
+
+def build_musiccaps_splits(df: pd.DataFrame, val_frac: float = 0.1, seed: int = 42) -> dict[str, list[str]]:
+    """Train/val/test split by ytid. Test = MusicCaps' own `is_audioset_eval`
+    flag (mirrors AudioSet's original eval split, not an arbitrary carve-out);
+    val = a random val_frac slice of the remaining (non-eval) rows."""
+    test_ids = df.loc[df["is_audioset_eval"], "ytid"].tolist()
+    train_pool = df.loc[~df["is_audioset_eval"], "ytid"].tolist()
+    rng = np.random.RandomState(seed)
+    shuffled = rng.permutation(train_pool)
+    num_val = int(len(shuffled) * val_frac)
+    val_ids = shuffled[:num_val].tolist()
+    train_ids = shuffled[num_val:].tolist()
+    return {"train": train_ids, "val": val_ids, "test": test_ids}
+
+
+def build_musiccaps_top_aspects(df: pd.DataFrame, top_k: int = 50) -> list[str]:
+    """Most frequent aspect_list entries across the given rows (analogous to
+    build_task1_top_tags), used as the caption->tag proxy target vocabulary."""
+    counter: Counter[str] = Counter()
+    for aspects in df["aspect_list"]:
+        counter.update(a.lower().strip() for a in aspects)
+    return [aspect for aspect, _ in counter.most_common(top_k)]
+
+
+def build_musiccaps_tag_dataset(df: pd.DataFrame, top_aspects: list[str]) -> pd.DataFrame:
+    """MusicCaps caption -> aspect-tag proxy dataset (spec 4.1's suggested
+    'MusicCaps caption -> tag proxy' Task 1 alternative): input text = the
+    free-text caption, multi-hot target = which of top_aspects appear in this
+    clip's aspect_list."""
+    def make_row(row: pd.Series) -> pd.Series:
+        aspects_lower = {a.lower().strip() for a in row["aspect_list"]}
+        labels = [1 if a in aspects_lower else 0 for a in top_aspects]
+        return pd.Series({"ytid": row["ytid"], "text": row["caption"], "labels": labels})
+
+    return df.apply(make_row, axis=1)

@@ -55,9 +55,9 @@ emotion:
   alpha: 0.1
   beta: 0.1
 
-# Task 4 contrastive retrieval config (MusicCaps).
+# Task 4 contrastive retrieval config (MusicCaps captions/aspect_list + yt-dlp audio,
+# see src/musiccaps_prep.py). dataset_root must contain musiccaps.csv and audio/*.wav.
 contrastive:
-  enabled: false
   dataset_root: data/raw/musiccaps
   temperature: 0.07
   embed_dim: 128

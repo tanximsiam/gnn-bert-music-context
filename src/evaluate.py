@@ -25,17 +25,26 @@ from torch_geometric.loader import DataLoader as PyGDataLoader
 from transformers import AutoTokenizer
 
 from src.bert_encoder import BertTagClassifier
+from src.contrastive import ContrastiveDualEncoder, retrieval_recall_at_k
 from src.datasets import (
+    build_musiccaps_splits,
     build_task1_dataset,
     build_task3_dataset,
     load_corrupted_track_ids,
     load_fma_metadata,
     load_fma_splits,
+    load_musiccaps,
 )
 from src.fusion_model import FusionModel
 from src.gnn_model import GNNGenreClassifier
 from src.graph_builder import SegmentGraphDataset, build_genre_label_map, build_or_load_track_graph
-from src.train import MultiModalTagDataset, TagTextDataset, fusion_collate
+from src.train import (
+    MultiModalTagDataset,
+    MusicCapsContrastiveDataset,
+    TagTextDataset,
+    contrastive_collate,
+    fusion_collate,
+)
 from src.utils import get_logger, load_config
 
 # Curated mood/atmosphere descriptors used to color Task 3's t-SNE plot (spec: "genre and
@@ -160,6 +169,62 @@ def run_task2_evaluation(config: dict, checkpoint_path: str, logger) -> None:
     }
     logger.info("[Task 2 eval] macro_f1=%.4f micro_f1=%.4f", result["macro_f1"], result["micro_f1"])
     out_path = Path("results/metrics") / f"task2_eval_{run_dir.name}.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w") as f:
+        json.dump(result, f, indent=2)
+    logger.info("Saved %s", out_path)
+
+
+def run_task4_evaluation(config: dict, checkpoint_path: str, logger) -> None:
+    """Reload a trained Task 4 contrastive checkpoint and recompute test-set
+    R@1/5/10 retrieval metrics (both directions) independently of train.py."""
+    run_dir = Path(checkpoint_path).parent
+    cc = config["contrastive"]
+    df = load_musiccaps(Path(cc["dataset_root"]) / "musiccaps.csv", Path(cc["dataset_root"]) / "audio")
+    splits = build_musiccaps_splits(df)
+    split_of = {yid: name for name, ids in splits.items() for yid in ids}
+    df = df.assign(split=df["ytid"].map(split_of))
+    test_df = df[df["split"] == "test"]
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    tokenizer = AutoTokenizer.from_pretrained(config["bert"]["model_name"])
+    cache_dir = Path("data/processed/musiccaps_graph_cache")
+    test_ds = MusicCapsContrastiveDataset(
+        test_df, cache_dir=cache_dir, audio_config=config["audio"], graph_config=config["graph"],
+        sample_rate=config["dataset"]["sample_rate"], tokenizer=tokenizer, max_length=config["bert"]["max_length"],
+    )
+    test_loader = TorchDataLoader(test_ds, batch_size=config["training"]["batch_size"], shuffle=False, collate_fn=contrastive_collate)
+
+    in_dim = 2 * config["audio"]["n_mfcc"] + (24 if config["audio"]["use_chroma"] else 0)
+    model = ContrastiveDualEncoder(
+        graph_in_dim=in_dim, graph_hidden_dim=config["gnn"]["hidden_dim"], graph_num_layers=config["gnn"]["num_layers"],
+        graph_dropout=config["gnn"]["dropout"], bert_model_name=config["bert"]["model_name"],
+        bert_freeze_layers=config["bert"]["freeze_layers"], embed_dim=cc["embed_dim"], temperature=cc["temperature"],
+    ).to(device)
+    model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    model.eval()
+
+    graph_embeds, text_embeds = [], []
+    with torch.no_grad():
+        for batch in test_loader:
+            g = batch["graph_batch"].to(device)
+            graph_embeds.append(model.encode_graph(g.x, g.edge_index, g.batch).cpu().numpy())
+            text_embeds.append(model.encode_text(batch["input_ids"].to(device), batch["attention_mask"].to(device)).cpu().numpy())
+    graph_embeds, text_embeds = np.concatenate(graph_embeds), np.concatenate(text_embeds)
+    sim = graph_embeds @ text_embeds.T
+
+    result = {
+        "checkpoint": str(checkpoint_path),
+        "audio_to_caption_r1": retrieval_recall_at_k(sim, 1),
+        "audio_to_caption_r5": retrieval_recall_at_k(sim, 5),
+        "audio_to_caption_r10": retrieval_recall_at_k(sim, 10),
+        "caption_to_audio_r1": retrieval_recall_at_k(sim.T, 1),
+        "caption_to_audio_r5": retrieval_recall_at_k(sim.T, 5),
+        "caption_to_audio_r10": retrieval_recall_at_k(sim.T, 10),
+        "num_test": len(test_df),
+    }
+    logger.info("[Task 4 eval] %s", result)
+    out_path = Path("results/metrics") / f"task4_eval_{run_dir.name}.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w") as f:
         json.dump(result, f, indent=2)
@@ -407,7 +472,7 @@ def main() -> None:
     if args.task == 3:
         run_task3_analysis(config, args.checkpoint, logger)
         return
-    raise NotImplementedError("Task 4 evaluation implemented in Phase 12.")
+    run_task4_evaluation(config, args.checkpoint, logger)
 
 
 if __name__ == "__main__":

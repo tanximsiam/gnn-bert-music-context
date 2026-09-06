@@ -7,15 +7,16 @@ classification, structural (GNN) modeling of audio segment graphs, and GNN–BER
 ## Overview
 
 A track is modeled as $T = (X_{audio}, X_{text}, G, y)$: audio segment features, text
-(artist bio), a segment graph $G=(V,E)$ (temporal + cosine-similarity
-edges over MFCC/chroma), and multi-label targets $y$ (genre / top tags). Three tasks are
+(artist bio or caption), a segment graph $G=(V,E)$ (temporal + cosine-similarity
+edges over MFCC/chroma), and multi-label targets $y$ (genre / top tags). Four tasks are
 implemented and evaluated end-to-end:
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 1 | BERT multi-label tag classifier on artist text | Done |
+| 1 | BERT multi-label tag classifier (artist bio + MusicCaps caption variants) | Done |
 | 2 | GraphSAGE on segment graphs vs. CNN mel-spectrogram baseline | Done |
 | 3 | GNN–BERT fusion (early-concat / cross-attention) + ablations | Done |
+| 4 | MusicCaps contrastive dual-encoder (InfoNCE, R@K retrieval) | Done |
 
 ## Dataset
 
@@ -24,8 +25,13 @@ implemented and evaluated end-to-end:
 - Only ~4,410 tracks have usable free-text tags; Task 1/3 train/val/test = 3,355/523/526.
 - 15 corrupted/truncated FMA-medium mp3s are excluded from all splits
   (`data/splits/fma_medium_corrupted_track_ids.json`).
+- **MusicCaps** (5,521 clips, YouTube audio + human captions) — used for a caption→tag
+  proxy Task 1 variant and for Task 4's contrastive retrieval. Audio isn't bundled by the
+  dataset itself; 4,814/5,521 clips (87.2%) were successfully fetched via `yt-dlp`
+  (`src/musiccaps_prep.py`) — the rest are permanently deleted/private/region-blocked
+  YouTube videos, an expected and accepted attrition rate for this kind of dataset.
 - Raw/processed audio and caches are **not** included in this repo (see `.gitignore`) —
-  download FMA-medium yourself and point `config.yaml`'s `dataset.root` at it.
+  download FMA-medium/MusicCaps yourself and point `config.yaml`'s `dataset.root` at it.
 
 ## Data leakage safeguards
 
@@ -52,9 +58,11 @@ src/
   cnn_baseline.py       B2 CNN baseline on log-mel spectrograms
   bert_encoder.py       DistilBERT text encoder + multi-label tag classification head
   fusion_model.py        Task 3 early-concat and cross-attention fusion heads
+  contrastive.py         Task 4 dual-encoder, InfoNCE loss, R@K retrieval metric
   baselines.py          B1 majority/random baseline (+ optional B4 PCA+MLP)
-  datasets.py            FMA loading, splits, Task 1 tag-subset construction
-  train.py / evaluate.py CLI entry points (--task {1,2,3})
+  datasets.py            FMA + MusicCaps loading, splits, Task 1 tag-subset construction
+  musiccaps_prep.py      one-off MusicCaps metadata/audio acquisition (yt-dlp)
+  train.py / evaluate.py CLI entry points (--task {1,2,3,4})
   utils.py               seeding, config loading, logging, run directories
 tests/                 pytest suite (dataset/graph/audio/shape/leakage checks)
 notebooks/             eda.ipynb, demo_context.ipynb
@@ -78,9 +86,12 @@ and https://os.unil.cloud.switch.ch/fma/fma_metadata.zip into `data/raw/fma_medi
 
 ```bash
 python -m src.train --task 2 --learning-rate 3e-4 --patience 10   # GNN + CNN baseline
-python -m src.train --task 1 --freeze-layers 2                    # BERT tag classifier
-python -m src.train --task 3                                       # fusion + ablations
-python -m src.evaluate --task {1,2,3} --checkpoint PATH
+python -m src.train --task 1 --freeze-layers 2                    # BERT tag classifier (artist bio)
+python -m src.train --task 1 --freeze-layers 2 --text-source musiccaps  # BERT (MusicCaps captions)
+python -m src.train --task 3 --freeze-layers 2                     # fusion + ablations
+python -m src.musiccaps_prep --fetch-metadata --download-audio     # one-off MusicCaps acquisition
+python -m src.train --task 4                                       # contrastive dual-encoder
+python -m src.evaluate --task {1,2,3,4} --checkpoint PATH
 pytest tests/
 ```
 
@@ -88,36 +99,52 @@ pytest tests/
 
 **Task 1 — BERT tag classifier** (DistilBERT, top 2 layers unfrozen, test set):
 
-| Model | Macro-F1 | Micro-F1 | AUC-PR |
+| Text source | Macro-F1 | Micro-F1 | AUC-PR |
 |---|---|---|---|
-| BERT (artist bio) | 0.066 | 0.083 | 0.136 |
+| Artist bio (FMA-medium) | 0.066 | 0.083 | 0.136 |
+| MusicCaps caption | 0.444 | 0.511 | 0.453 |
 
-Artist-bio text is a weak signal for tags (bios describe artist backstory, not
-musical style) — a genuine, expected result rather than a bug.
+Artist-bio text is a weak signal for tags (bios describe artist backstory, not musical
+style). MusicCaps captions, which directly describe the audio's musical content, give a
+much stronger signal — expected, since it's a fundamentally more relevant text source.
 
 **Task 2 — GNN on segment graphs vs. CNN baseline** (16-way genre classification, test set):
 
 | Model | Macro-F1 | Micro-F1 |
 |---|---|---|
 | B1 majority/random | 0.027 | 0.276 |
-| GNN (GraphSAGE, segment graph) | 0.312 | 0.534 |
-| B2 CNN (log-mel spectrogram) | 0.348 | 0.622 |
+| GNN (GraphSAGE, segment graph) | 0.307 | 0.532 |
+| B2 CNN (log-mel spectrogram) | 0.312 | 0.614 |
 
-**Task 3 — GNN–BERT fusion ablations** (identical Task 1 tagged-subset splits, test set):
+**Task 3 — GNN–BERT fusion ablations** (genre + mood/tag multi-label target, 36-way,
+identical Task 1 tagged-subset splits, test set):
 
 | Variant | Macro-F1 | Micro-F1 | AUC-PR |
 |---|---|---|---|
-| BERT-only | 0.055 | 0.069 | 0.124 |
-| GNN-only | 0.121 | 0.108 | 0.133 |
-| Early concat | 0.118 | 0.130 | 0.133 |
-| Cross-attention | 0.104 | 0.104 | 0.143 |
+| GNN-only | 0.152 | 0.152 | 0.196 |
+| BERT-only | 0.139 | 0.146 | 0.232 |
+| Early concat | 0.202 | 0.246 | 0.287 |
+| Cross-attention | 0.153 | 0.193 | 0.199 |
 
-GNN-only clearly beats BERT-only, consistent with the Task 1 finding that bio
-text carries little tag signal — the graph/audio modality is the stronger one here.
-Fusion (concat/cross-attention) gives the best AUC-PR and micro-F1 but doesn't
-uniformly dominate every metric at this model scale/data size.
+Early-concat fusion wins outright on all three metrics — combining graph and text
+modalities beats either alone once the target vector combines genre and mood/tag labels
+together (per spec section 4.3).
 
-Full metrics, training curves, t-SNE plots, and case studies are in `results/task{1,2,3}/`.
+**Task 4 — MusicCaps contrastive retrieval** (dual-encoder, InfoNCE, 4,814/5,521 clips
+downloaded, test set n=2,514 via `is_audioset_eval` split):
+
+| Direction | R@1 | R@5 | R@10 |
+|---|---|---|---|
+| Audio → caption | 0.36% | 1.91% | 3.38% |
+| Caption → audio | 0.44% | 2.31% | 3.70% |
+
+Random chance at this pool size (2,514 candidates) is ~0.4% for R@10, so the model is
+roughly 8-9x better than chance — a modest but real retrieval signal given the small
+training set (2,070 pairs). Zero-shot caption→tag classification (nearest-prototype over
+top-50 aspect names, no threshold tuning): macro_f1=0.076, micro_f1=0.087 (not directly
+comparable to Task 3's supervised FMA numbers — different dataset/vocabulary).
+
+Full metrics, training curves, t-SNE plots, and case studies are in `results/task{1,2,3,4}/`.
 
 ## Tests
 

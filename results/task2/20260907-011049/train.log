@@ -1,0 +1,57 @@
+2026-09-07 01:10:49,872 [train.task2] INFO: Run directory: results/task2/20260907-011049
+2026-09-07 01:10:49,872 [train.task2] INFO: device: cuda
+2026-09-07 01:10:53,437 [train.task2] INFO: class weights (train-only, sqrt-smoothed, clipped): [4.630000114440918, 1.590000033378601, 2.9600000381469727, 5.0, 0.5, 0.8299999833106995, 1.0099999904632568, 0.8399999737739563, 1.090000033378601, 1.2400000095367432, 2.0199999809265137, 1.75, 1.149999976158142, 0.4699999988079071, 3.640000104904175, 3.640000104904175]
+2026-09-07 01:21:34,805 [train.task2] INFO: epoch 0: train_loss=2.1852 val_loss=1.7898 val_macro_f1=0.2348 val_micro_f1=0.5284
+2026-09-07 01:21:46,506 [train.task2] INFO: epoch 1: train_loss=1.8406 val_loss=1.7065 val_macro_f1=0.3135 val_micro_f1=0.5451
+2026-09-07 01:21:53,804 [train.task2] INFO: epoch 2: train_loss=1.7742 val_loss=1.6838 val_macro_f1=0.3151 val_micro_f1=0.5339
+2026-09-07 01:22:01,245 [train.task2] INFO: epoch 3: train_loss=1.7378 val_loss=1.7008 val_macro_f1=0.2949 val_micro_f1=0.4972
+2026-09-07 01:22:09,224 [train.task2] INFO: epoch 4: train_loss=1.7130 val_loss=1.6397 val_macro_f1=0.3453 val_micro_f1=0.5539
+2026-09-07 01:22:16,814 [train.task2] INFO: epoch 5: train_loss=1.6896 val_loss=1.6090 val_macro_f1=0.3393 val_micro_f1=0.5791
+2026-09-07 01:22:28,160 [train.task2] INFO: epoch 6: train_loss=1.6659 val_loss=1.6413 val_macro_f1=0.2989 val_micro_f1=0.5551
+2026-09-07 01:22:35,094 [train.task2] INFO: epoch 7: train_loss=1.6579 val_loss=1.6216 val_macro_f1=0.3373 val_micro_f1=0.5607
+2026-09-07 01:22:43,032 [train.task2] INFO: epoch 8: train_loss=1.6466 val_loss=1.6645 val_macro_f1=0.2979 val_micro_f1=0.5523
+2026-09-07 01:22:50,504 [train.task2] INFO: epoch 9: train_loss=1.6297 val_loss=1.6033 val_macro_f1=0.3379 val_micro_f1=0.5723
+2026-09-07 01:23:01,703 [train.task2] INFO: epoch 10: train_loss=1.6204 val_loss=1.6071 val_macro_f1=0.3252 val_micro_f1=0.5639
+2026-09-07 01:23:09,685 [train.task2] INFO: epoch 11: train_loss=1.6115 val_loss=1.6025 val_macro_f1=0.3237 val_micro_f1=0.5615
+2026-09-07 01:23:16,723 [train.task2] INFO: epoch 12: train_loss=1.6009 val_loss=1.5894 val_macro_f1=0.3517 val_micro_f1=0.5567
+2026-09-07 01:23:24,280 [train.task2] INFO: epoch 13: train_loss=1.5951 val_loss=1.5931 val_macro_f1=0.3442 val_micro_f1=0.5579
+2026-09-07 01:23:35,529 [train.task2] INFO: epoch 14: train_loss=1.5956 val_loss=1.6320 val_macro_f1=0.3228 val_micro_f1=0.5563
+2026-09-07 01:23:42,379 [train.task2] INFO: epoch 15: train_loss=1.5872 val_loss=1.5903 val_macro_f1=0.3478 val_micro_f1=0.5807
+2026-09-07 01:23:50,231 [train.task2] INFO: epoch 16: train_loss=1.5750 val_loss=1.5808 val_macro_f1=0.3512 val_micro_f1=0.5783
+2026-09-07 01:23:57,515 [train.task2] INFO: epoch 17: train_loss=1.5708 val_loss=1.6040 val_macro_f1=0.3450 val_micro_f1=0.5747
+2026-09-07 01:24:05,454 [train.task2] INFO: epoch 18: train_loss=1.5647 val_loss=1.5716 val_macro_f1=0.3481 val_micro_f1=0.5867
+2026-09-07 01:24:16,188 [train.task2] INFO: epoch 19: train_loss=1.5652 val_loss=1.5684 val_macro_f1=0.3437 val_micro_f1=0.5819
+2026-09-07 01:24:23,721 [train.task2] INFO: epoch 20: train_loss=1.5598 val_loss=1.5937 val_macro_f1=0.3369 val_micro_f1=0.5719
+2026-09-07 01:24:31,398 [train.task2] INFO: epoch 21: train_loss=1.5507 val_loss=1.5983 val_macro_f1=0.3492 val_micro_f1=0.5743
+2026-09-07 01:24:38,748 [train.task2] INFO: epoch 22: train_loss=1.5444 val_loss=1.5888 val_macro_f1=0.3217 val_micro_f1=0.5795
+2026-09-07 01:24:49,954 [train.task2] INFO: epoch 23: train_loss=1.5451 val_loss=1.5897 val_macro_f1=0.3160 val_micro_f1=0.5839
+2026-09-07 01:24:57,653 [train.task2] INFO: epoch 24: train_loss=1.5412 val_loss=1.5815 val_macro_f1=0.3479 val_micro_f1=0.5727
+2026-09-07 01:25:05,221 [train.task2] INFO: epoch 25: train_loss=1.5392 val_loss=1.6086 val_macro_f1=0.3479 val_micro_f1=0.5579
+2026-09-07 01:25:12,961 [train.task2] INFO: epoch 26: train_loss=1.5328 val_loss=1.5751 val_macro_f1=0.3381 val_micro_f1=0.5783
+2026-09-07 01:25:24,197 [train.task2] INFO: epoch 27: train_loss=1.5253 val_loss=1.5699 val_macro_f1=0.3472 val_micro_f1=0.5935
+2026-09-07 01:25:31,619 [train.task2] INFO: epoch 28: train_loss=1.5222 val_loss=1.6040 val_macro_f1=0.3569 val_micro_f1=0.5691
+2026-09-07 01:25:38,874 [train.task2] INFO: epoch 29: train_loss=1.5221 val_loss=1.5926 val_macro_f1=0.3353 val_micro_f1=0.5903
+2026-09-07 01:25:38,874 [train.task2] INFO: early stopping at epoch 29
+2026-09-07 01:38:49,736 [train.task2] INFO: TEST: gnn_macro_f1=0.3071 gnn_micro_f1=0.5315
+2026-09-07 01:38:49,737 [train.task2] INFO: TEST: b1_majority_macro_f1=0.0270 b1_majority_micro_f1=0.2760
+2026-09-07 01:39:35,690 [train.task2] INFO: [CNN] epoch 0: train_loss=1.8631 val_loss=1.9451 val_macro_f1=0.2507 val_micro_f1=0.4768
+2026-09-07 01:40:26,056 [train.task2] INFO: [CNN] epoch 1: train_loss=1.6790 val_loss=2.0449 val_macro_f1=0.2562 val_micro_f1=0.3626
+2026-09-07 01:41:08,733 [train.task2] INFO: [CNN] epoch 2: train_loss=1.6206 val_loss=1.7110 val_macro_f1=0.2732 val_micro_f1=0.5256
+2026-09-07 01:41:51,401 [train.task2] INFO: [CNN] epoch 3: train_loss=1.5790 val_loss=1.9335 val_macro_f1=0.2527 val_micro_f1=0.4329
+2026-09-07 01:42:33,985 [train.task2] INFO: [CNN] epoch 4: train_loss=1.5576 val_loss=1.7793 val_macro_f1=0.2555 val_micro_f1=0.5583
+2026-09-07 01:43:20,124 [train.task2] INFO: [CNN] epoch 5: train_loss=1.5481 val_loss=1.5730 val_macro_f1=0.3270 val_micro_f1=0.6050
+2026-09-07 01:44:03,069 [train.task2] INFO: [CNN] epoch 6: train_loss=1.5237 val_loss=1.9680 val_macro_f1=0.2329 val_micro_f1=0.4597
+2026-09-07 01:44:46,256 [train.task2] INFO: [CNN] epoch 7: train_loss=1.5220 val_loss=1.5977 val_macro_f1=0.3178 val_micro_f1=0.6162
+2026-09-07 01:45:29,874 [train.task2] INFO: [CNN] epoch 8: train_loss=1.5045 val_loss=1.4749 val_macro_f1=0.3586 val_micro_f1=0.6478
+2026-09-07 01:46:17,971 [train.task2] INFO: [CNN] epoch 9: train_loss=1.5022 val_loss=1.8062 val_macro_f1=0.2924 val_micro_f1=0.5064
+2026-09-07 01:47:01,211 [train.task2] INFO: [CNN] epoch 10: train_loss=1.4953 val_loss=1.9344 val_macro_f1=0.2565 val_micro_f1=0.4529
+2026-09-07 01:47:46,399 [train.task2] INFO: [CNN] epoch 11: train_loss=1.4889 val_loss=1.6223 val_macro_f1=0.3489 val_micro_f1=0.5575
+2026-09-07 01:48:34,565 [train.task2] INFO: [CNN] epoch 12: train_loss=1.4859 val_loss=1.5136 val_macro_f1=0.3865 val_micro_f1=0.5982
+2026-09-07 01:49:25,788 [train.task2] INFO: [CNN] epoch 13: train_loss=1.4772 val_loss=1.6591 val_macro_f1=0.3178 val_micro_f1=0.5631
+2026-09-07 01:50:13,649 [train.task2] INFO: [CNN] epoch 14: train_loss=1.4704 val_loss=1.5709 val_macro_f1=0.3638 val_micro_f1=0.5631
+2026-09-07 01:51:04,903 [train.task2] INFO: [CNN] epoch 15: train_loss=1.4699 val_loss=1.6431 val_macro_f1=0.2955 val_micro_f1=0.5463
+2026-09-07 01:51:50,128 [train.task2] INFO: [CNN] epoch 16: train_loss=1.4607 val_loss=1.6240 val_macro_f1=0.3322 val_micro_f1=0.5699
+2026-09-07 01:52:35,059 [train.task2] INFO: [CNN] epoch 17: train_loss=1.4653 val_loss=1.5347 val_macro_f1=0.3595 val_micro_f1=0.6154
+2026-09-07 01:53:20,058 [train.task2] INFO: [CNN] epoch 18: train_loss=1.4628 val_loss=1.5238 val_macro_f1=0.3857 val_micro_f1=0.6250
+2026-09-07 01:53:20,058 [train.task2] INFO: [CNN] early stopping at epoch 18
+2026-09-07 01:53:25,918 [train.task2] INFO: [CNN] TEST: cnn_macro_f1=0.3115 cnn_micro_f1=0.6139

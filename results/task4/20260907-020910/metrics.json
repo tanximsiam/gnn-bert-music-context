@@ -1,0 +1,352 @@
+{
+  "top_aspects": [
+    "low quality",
+    "instrumental",
+    "passionate",
+    "noisy",
+    "emotional",
+    "medium tempo",
+    "amateur recording",
+    "energetic",
+    "slow tempo",
+    "live performance",
+    "mono",
+    "acoustic drums",
+    "fast tempo",
+    "groovy",
+    "bass guitar",
+    "no voices",
+    "moderate tempo",
+    "groovy bass",
+    "percussion",
+    "punchy kick",
+    "electric guitar",
+    "piano",
+    "male voice",
+    "exciting",
+    "shimmering hi hats",
+    "instrumental music",
+    "acoustic guitar",
+    "no other instruments",
+    "punchy snare",
+    "bass",
+    "pop",
+    "cheerful",
+    "upbeat",
+    "romantic",
+    "male vocal",
+    "flat male vocal",
+    "happy",
+    "uptempo",
+    "e-bass",
+    "mellow",
+    "rock",
+    "easygoing",
+    "melodic singing",
+    "joyful",
+    "poor audio quality",
+    "classical",
+    "keyboard",
+    "bad audio quality",
+    "male singer",
+    "no singer"
+  ],
+  "history": {
+    "train_loss": [
+      3.4752833880484104,
+      3.3815673664212227,
+      3.2614907026290894,
+      3.187205955386162,
+      3.15604754909873,
+      3.100901234894991,
+      3.038920968770981,
+      3.0310119315981865,
+      3.0099395774304867,
+      2.980511974543333,
+      2.941541764885187,
+      2.926868747919798,
+      2.9156593158841133,
+      2.856133572757244,
+      2.872822791337967,
+      2.8360502496361732,
+      2.807052992284298,
+      2.7611508890986443,
+      2.7518398463726044,
+      2.7393287755548954,
+      2.7111949138343334,
+      2.7105044536292553,
+      2.6647781245410442,
+      2.6549179404973984,
+      2.641310527920723,
+      2.6225311271846294,
+      2.5763715505599976,
+      2.586076408624649,
+      2.570155844092369,
+      2.531639203429222
+    ],
+    "val_loss": [
+      5.381836891174316,
+      5.188213348388672,
+      5.13364315032959,
+      5.063425064086914,
+      5.0254716873168945,
+      4.981254577636719,
+      4.935467720031738,
+      4.983776092529297,
+      4.894329071044922,
+      4.876190185546875,
+      4.910372734069824,
+      4.836031913757324,
+      4.801848411560059,
+      4.800722122192383,
+      4.770688533782959,
+      4.780218601226807,
+      4.745151519775391,
+      4.733829021453857,
+      4.69144344329834,
+      4.631371974945068,
+      4.747055530548096,
+      4.62844181060791,
+      4.586856365203857,
+      4.606664657592773,
+      4.630519390106201,
+      4.578952789306641,
+      4.569611549377441,
+      4.552642822265625,
+      4.56583309173584,
+      4.562719345092773
+    ],
+    "val_audio_to_caption_r10": [
+      0.07391304347826087,
+      0.08695652173913043,
+      0.1,
+      0.12173913043478261,
+      0.1391304347826087,
+      0.1608695652173913,
+      0.18695652173913044,
+      0.1956521739130435,
+      0.20869565217391303,
+      0.18695652173913044,
+      0.1608695652173913,
+      0.21739130434782608,
+      0.20434782608695654,
+      0.2217391304347826,
+      0.22608695652173913,
+      0.2217391304347826,
+      0.22608695652173913,
+      0.23478260869565218,
+      0.2565217391304348,
+      0.25217391304347825,
+      0.24347826086956523,
+      0.28695652173913044,
+      0.2826086956521739,
+      0.3,
+      0.30434782608695654,
+      0.28695652173913044,
+      0.32608695652173914,
+      0.3347826086956522,
+      0.3391304347826087,
+      0.32608695652173914
+    ]
+  },
+  "test_retrieval": {
+    "audio_to_caption_r1": 0.003579952267303103,
+    "audio_to_caption_r5": 0.01909307875894988,
+    "audio_to_caption_r10": 0.03381066030230708,
+    "caption_to_audio_r1": 0.004375497215592681,
+    "caption_to_audio_r5": 0.023070803500397773,
+    "caption_to_audio_r10": 0.03699284009546539
+  },
+  "dataset_sizes": {
+    "train": 2070,
+    "val": 230,
+    "test": 2514
+  },
+  "qualitative_retrieval_examples": [
+    {
+      "query_caption": "A female voice is singing loud and in a high key. Her voice is full of reverb and a little delay. It is so loud that the speakers are speaking a lot. There are percussive instruments like chimes and tabla like sounds playing a rhythm while a flute is playing a melody in the background. This is an am",
+      "query_ytid": "Bl-lCgr5hGY",
+      "top3_matched_clips": [
+        {
+          "ytid": "ZV_ZbmjPpkw",
+          "caption": "Someone is strumming chords on an e-guitar. The sound is distorted and you can also hear the clean sound of the guitar in the background. This song may be playing guitar at home."
+        },
+        {
+          "ytid": "gXzqZIoM5g8",
+          "caption": "The low quality recording features a metal song that consists male vocals with a wide echoing effect on, wide filter modulated electric guitar chords, noisy snare hits, punchy kick and pulsating synth"
+        },
+        {
+          "ytid": "BsVsoZ4ojp0",
+          "caption": "This song is of low quality. This features a male voice singing the main melody in a foreign language. Female voices sing the vocal harmony in this song. This is accompanied by simple percussion. Trum"
+        }
+      ]
+    },
+    {
+      "query_caption": "This is an acoustic cover of a pop music piece. There is a boy singing melodically. The chords are being played on the ukulele. The atmosphere of the original piece is emotional, but the characteristics of the ukulele create a chill atmosphere. The piece is in medium tempo. This rendition of the pie",
+      "query_ytid": "I1fcUe9MoMw",
+      "top3_matched_clips": [
+        {
+          "ytid": "Xf0aZ3a3Toc",
+          "caption": "ambient space sounds that are a cold and desolate feeling. Metallic screeching, whooshing distant bells ringing, lots of reverb and a long synthesizer filter sweep. Good for a science fiction film."
+        },
+        {
+          "ytid": "bkzGHRpx5MM",
+          "caption": "This is an instrumental progressive rock piece. The only instrument being played in the piece is a clean sounding electric guitar. There is a gently played guitar solo that gives a mellow aura. The at"
+        },
+        {
+          "ytid": "LFW4yPH1z3M",
+          "caption": "Someone is playing a melody on an e-guitar with a tremolo effect. This song may be playing at home practicing guitar."
+        }
+      ]
+    },
+    {
+      "query_caption": "This song is sung by a female choir and then a single male voice along with the melody of an e-piano. In the background someone is playing lower tuned percussion and some chimes and wooden sounds. This song may be playing at a band rehearsal.",
+      "query_ytid": "IN71kMOAk_k",
+      "top3_matched_clips": [
+        {
+          "ytid": "W-nkxlYTdV4",
+          "caption": "This is an Indian classical duet. The tempo is slow with the ensemble of vocalists singing this melody in harmony to the rhythm of tanpura and keeping count by tapping.  The song is a composition of R"
+        },
+        {
+          "ytid": "69oU6LfyQ_4",
+          "caption": "A female singer sings this live cover version of a famous song. The song is medium tempo with guitar accompaniment, crowds cheering  and whistling and cameras clicking. The song has a poor audio quali"
+        },
+        {
+          "ytid": "0fqtA_ZBn_8",
+          "caption": "The low quality recording features a live performance of a traditional song that consists of fruity male vocals, alongside harmonizing boy background vocals, singing over subtle strings melody and woo"
+        }
+      ]
+    },
+    {
+      "query_caption": "This audio contains environmental noises as ocean waves sounds; seabirds singing; a train passing by and a synth pad playing a short rising sound. This song may be playing in an advertisement.",
+      "query_ytid": "J1-Qvl7u2TI",
+      "top3_matched_clips": [
+        {
+          "ytid": "QUB_vpjogmo",
+          "caption": "The low quality recording features a dark moody piano melody and at the very end of the loop, a short snippet of muffled snare hit and flat male vocals. It sounds very noisy, as there are vinyl crackl"
+        },
+        {
+          "ytid": "P-eIhvCaK-s",
+          "caption": "This is an instrumental heavy metal piece. There is a bass guitar gently playing the melody with a clean sound. It is a melodic piece with a touch of melancholy. This piece can be used in the soundtra"
+        },
+        {
+          "ytid": "0EOQco76eXQ",
+          "caption": "The song is an instrumental. The song is slow tempo with gentle drum brushes, percussion, bass guitar solo, and piano accompaniment gently. The song is groovy and emotional. The song is possibly a Chr"
+        }
+      ]
+    },
+    {
+      "query_caption": "a latin jazz ensemble performing in a recital hall. A trumpet solo is accompanied by acoustic bass, syncopated drums and piano. The rhythm is upbeat and danceable. You can hear the reverb of the recital hall as well as audience sounds, someone sneezing.",
+      "query_ytid": "eiyyoUt64Zc",
+      "top3_matched_clips": [
+        {
+          "ytid": "zOvFaef41iw",
+          "caption": "The drums are playing a funky groove together with the e-bass. An almost clean e-guitar is playing an additional melody in the background. A male and female voice are singing together accompanied by a"
+        },
+        {
+          "ytid": "8zDbEfC6Uf0",
+          "caption": "This song is a loud, energetic electronic instrumental. The audio quality is substandard making it hard to hear the song. One can tell that the song is vibrant , vivacious, bright, youthful and buoyan"
+        },
+        {
+          "ytid": "P90rFZQFqWk",
+          "caption": "This song is a low quality live recording of a performance. This features a male voice singing the main melody. At the end of the song, other voices sing with the main voice in harmony. This is accomp"
+        }
+      ]
+    },
+    {
+      "query_caption": "The low quality recording features an acoustic guitar tuning tutorial. The recording is in mono and very noisy.",
+      "query_ytid": "M27mIdPCZEY",
+      "top3_matched_clips": [
+        {
+          "ytid": "PqTPbZf44E0",
+          "caption": "This music is instrumental. The tempo is slow with the musician plucking a single string of a ukelele. This audio is of a Ukelele being tuned."
+        },
+        {
+          "ytid": "RczzNAr1T_Q",
+          "caption": "The song is an instrumental. The tempo is medium with a guitar strumming to different settings of an effects delay pedal with echoes and effects being heard. The song is an effects pedal demonstration"
+        },
+        {
+          "ytid": "Weu8nsJRMqE",
+          "caption": "This song is an instrumental. The tempo is medium with an acoustic guitar playing a monotone. There is no melody or instrumentation . It sounds like a guitar being tuned. It is repetitive, and insiste"
+        }
+      ]
+    },
+    {
+      "query_caption": "A male vocalist sings this emotional Christian Worship Song. The tempo is medium with energetic drumming,harmonious electric guitar , acoustic Guiana keyboard accompaniment and subtle bass. The song is a soft, mellow, emotional, pensive, devotional, Christian music.",
+      "query_ytid": "RceCfg1FQq4",
+      "top3_matched_clips": [
+        {
+          "ytid": "aY8-pXDdwiw",
+          "caption": "This song is a choral harmony. The tempo is slow with intense bass and an instrument that sounds like a viola. The song is grim, grave, intense, sinister; eerie; spooky; scary, chant-like, and dreary."
+        },
+        {
+          "ytid": "-Gf4Ihv1zwc",
+          "caption": "This is a Christmas music piece with heavy influences from Celtic music. There is a female vocalist singing melodically as the lead. The melodic background is provided by the strings and the piano and"
+        },
+        {
+          "ytid": "wsJ5ZLKiPzs",
+          "caption": "Someone is playing a cowbell along with other percussion such as congas along to a pumping bassline. A piano and a brass section are playing a countermelody to the female and male voices singing. In t"
+        }
+      ]
+    },
+    {
+      "query_caption": "This song is full of rhythmic elements and an e-bass that supports the mood for dancing. A rhodes/organ is playing a simple melody along with a trumped playing its own melody. The recording is full of synth pad sound and crash hits. This song may be playing on a portable speaker while riding a bike ",
+      "query_ytid": "2CzfBZ1mYBs",
+      "top3_matched_clips": [
+        {
+          "ytid": "-5FoeegAgvU",
+          "caption": "The instrumental music features an ensemble that resembles the orchestra. The melody is being played by a brass section while strings provide harmonic accompaniment. At the end of the music excerpt on"
+        },
+        {
+          "ytid": "AgtY6m-b3Gk",
+          "caption": "This is an instrumental jazz improvisation piece with heavy bossa nova influences. There is an over-arching bossa nova syncopation not only being played by the acoustic drums in the backing track but "
+        },
+        {
+          "ytid": "4TDtUHo5cSE",
+          "caption": "The low quality recording features a jazz song that consists of shimmering hi hats and ride cymbals, soft kick and snare hits, groovy walking bass and smooth organ keys melody. It sounds easygoing, gr"
+        }
+      ]
+    },
+    {
+      "query_caption": "The ballad song features a mellow female vocal singing over a mellow organ keys melody, groovy hi hats, soft snare and kick hits and smooth bass. It sounds emotional, heartfelt and romantic - like something you would hear at a wedding.",
+      "query_ytid": "g0scnRzoo9M",
+      "top3_matched_clips": [
+        {
+          "ytid": "bt7rDryN7G4",
+          "caption": "This music is an electronic guitar instrumental. The tempo is medium with a harmonious electric guitar lead, steady drumming, subtle bass ,tambourine beats and synthesiser arrangement. The music is a "
+        },
+        {
+          "ytid": "0Olm321vgk8",
+          "caption": "The Low Quality recording features r&b/soul songs sung by passionate male vocalists over fat bass guitar, punchy kick and snare hits and arpeggiated electric guitar melody. There are also some chatter"
+        },
+        {
+          "ytid": "1SqihV_DnEg",
+          "caption": "The track is a lullaby song that features a mellow male vocal with a mellow voice. A soft xylophone plays a melody on the foreground while a deep bass guitar adds a certain bounciness to the song's rh"
+        }
+      ]
+    },
+    {
+      "query_caption": "The low quality recording features a chiptune remix of a pop song and it consists of high pitched female vocal singing over repetitive synth melody, punchy \"4 on the floor\" kick pattern and shimmering bells melody at the very beginning of the loop. It sounds kind of addictive, fun and happy. The aud",
+      "query_ytid": "5iPTcL50mvw",
+      "top3_matched_clips": [
+        {
+          "ytid": "oRHKVmQ138Q",
+          "caption": "This music is an Electronic music instrumental. The tempo is medium with synthesiser arrangements , electronic xylophone harmony and digital drum beats. The music is soothing, punchy, groovy, hypnotic"
+        },
+        {
+          "ytid": "a4BjqKd8FsI",
+          "caption": "This music is an instrumental with a medium fast tempo. The music is orchestral with a lively brass band harmony, violin accompaniment, xylophone beats, a bright trombone and cello bass. The music is "
+        },
+        {
+          "ytid": "2JuMYUPMGGM",
+          "caption": "This is an electronic piece played in an instructive video. A sine wave synth sound is used both in the chords and the lead section. It is in medium-to-high range. There is a bizarre feeling in this p"
+        }
+      ]
+    }
+  ],
+  "zero_shot_tag_prediction": {
+    "macro_f1": 0.07585763153454612,
+    "micro_f1": 0.08706583815236521,
+    "note": "Zero-shot on MusicCaps aspect vocabulary; compare against Task3's supervised FMA tag results in results/task3/*/metrics.json (different dataset/tag vocab)."
+  }
+}

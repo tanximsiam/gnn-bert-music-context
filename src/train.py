@@ -8,6 +8,7 @@ and unique run-directory creation, so every task follows it consistently.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 from sklearn.metrics import average_precision_score, f1_score
 from torch.utils.data import DataLoader as TorchDataLoader
@@ -28,17 +30,27 @@ from transformers import AutoTokenizer
 from src.baselines import majority_random_baseline
 from src.bert_encoder import BertTagClassifier
 from src.cnn_baseline import MelSpecCNN, MelSpecDataset
+from src.contrastive import ContrastiveDualEncoder, info_nce_loss, retrieval_recall_at_k
 from src.datasets import (
+    build_musiccaps_splits,
+    build_musiccaps_tag_dataset,
+    build_musiccaps_top_aspects,
     build_task1_dataset,
     build_task1_top_tags,
     build_task3_dataset,
     load_corrupted_track_ids,
     load_fma_metadata,
     load_fma_splits,
+    load_musiccaps,
     task3_label_names,
 )
 from src.gnn_model import GNNGenreClassifier
-from src.graph_builder import SegmentGraphDataset, build_genre_label_map, build_or_load_track_graph
+from src.graph_builder import (
+    SegmentGraphDataset,
+    build_genre_label_map,
+    build_or_load_audio_graph,
+    build_or_load_track_graph,
+)
 from src.fusion_model import FusionModel
 from src.utils import get_logger, load_config, make_run_dir, save_run_metadata, set_seed
 
@@ -52,6 +64,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=None, help="override config training.epochs")
     parser.add_argument("--patience", type=int, default=None, help="override config training.early_stopping_patience")
     parser.add_argument("--freeze-layers", type=str, default=None, help="override config bert.freeze_layers")
+    parser.add_argument(
+        "--text-source", type=str, default="fma_bio", choices=["fma_bio", "musiccaps"],
+        help="Task 1 only: 'fma_bio' (artist bio -> FMA tags, default) or 'musiccaps' "
+        "(caption -> aspect-tag proxy, spec section 4.1's MusicCaps alternative)",
+    )
     return parser.parse_args()
 
 
@@ -159,24 +176,106 @@ def fusion_collate(batch: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
-def train_task1(config: dict[str, Any], run_dir: Path, logger) -> None:
-    """Task 1: multi-label BERT tag classifier on artist-disjoint splits."""
+class MusicCapsContrastiveDataset(TorchDataset):
+    """Task 4: pairs each MusicCaps clip's segment graph with its caption (and,
+    for the zero-shot tag-prediction deliverable, its multi-hot aspect labels)."""
+
+    def __init__(
+        self,
+        df: Any,
+        cache_dir: Path,
+        audio_config: dict[str, Any],
+        graph_config: dict[str, Any],
+        sample_rate: int,
+        tokenizer: Any,
+        max_length: int,
+    ):
+        self.rows = df.reset_index(drop=True)
+        self.cache_dir = cache_dir
+        self.audio_config = audio_config
+        self.graph_config = graph_config
+        self.sample_rate = sample_rate
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+
+    def __len__(self) -> int:
+        return len(self.rows)
+
+    def __getitem__(self, idx: int) -> dict[str, Any]:
+        row = self.rows.iloc[idx]
+        graph = build_or_load_audio_graph(
+            row["ytid"],
+            row["audio_path"],
+            self.cache_dir,
+            self.sample_rate,
+            self.audio_config["segment_seconds"],
+            self.audio_config["n_mfcc"],
+            self.audio_config["use_chroma"],
+            self.graph_config["similarity_threshold"],
+            self.graph_config["bidirectional_edges"],
+            self.graph_config["self_loops"],
+        ).clone()
+        enc = self.tokenizer(
+            row["caption"], truncation=True, padding="max_length", max_length=self.max_length, return_tensors="pt"
+        )
+        item = {
+            "graph": graph,
+            "input_ids": enc["input_ids"].squeeze(0),
+            "attention_mask": enc["attention_mask"].squeeze(0),
+            "ytid": row["ytid"],
+            "caption": row["caption"],
+        }
+        if "labels" in row:
+            item["labels"] = torch.tensor(row["labels"], dtype=torch.float32)
+        return item
+
+
+def contrastive_collate(batch: list[dict[str, Any]]) -> dict[str, Any]:
+    out = {
+        "graph_batch": PyGBatch.from_data_list([item["graph"] for item in batch]),
+        "input_ids": torch.stack([item["input_ids"] for item in batch]),
+        "attention_mask": torch.stack([item["attention_mask"] for item in batch]),
+        "ytid": [item["ytid"] for item in batch],
+        "caption": [item["caption"] for item in batch],
+    }
+    if "labels" in batch[0]:
+        out["labels"] = torch.stack([item["labels"] for item in batch])
+    return out
+
+
+def train_task1(config: dict[str, Any], run_dir: Path, logger, text_source: str = "fma_bio") -> None:
+    """Task 1: multi-label BERT tag classifier. text_source='fma_bio' (default)
+    trains on FMA artist-bio text -> FMA track tags. text_source='musiccaps' is
+    the spec's alternative Task 1 formulation (section 4.1): MusicCaps caption
+    -> aspect-tag proxy (doesn't need any audio download, text/labels only)."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    logger.info("device: %s", device)
+    logger.info("device: %s, text_source: %s", device, text_source)
 
-    subset = config["dataset"]["name"].replace("fma_", "")
-    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset=subset)
-    corrupted_ids = load_corrupted_track_ids()
-    splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
+    if text_source == "musiccaps":
+        cc = config["contrastive"]
+        mc_df = pd.read_csv(Path(cc["dataset_root"]) / "musiccaps.csv")
+        mc_df["aspect_list"] = mc_df["aspect_list"].apply(ast.literal_eval)
+        mc_splits = build_musiccaps_splits(mc_df)
+        top_tags = build_musiccaps_top_aspects(mc_df[mc_df["ytid"].isin(mc_splits["train"])], top_k=50)
+        logger.info("Task 1 (MusicCaps) target aspect vocabulary (top-50, from TRAIN only): %s", top_tags)
+        task1_df = build_musiccaps_tag_dataset(mc_df, top_tags)
+        split_of = {yid: name for name, ids in mc_splits.items() for yid in ids}
+        task1_df = task1_df.assign(split=task1_df["ytid"].map(split_of))
+    else:
+        subset = config["dataset"]["name"].replace("fma_", "")
+        tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset=subset)
+        corrupted_ids = load_corrupted_track_ids()
+        splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
 
-    # Target tag vocabulary chosen from TRAIN split only (rule: no test-set peeking
-    # during feature/target selection).
-    top_tags = build_task1_top_tags(tracks[tracks["track_id"].isin(splits["train"])], top_k=20)
-    logger.info("Task 1 target tag vocabulary (top-20, from TRAIN only): %s", top_tags)
+        # Target tag vocabulary chosen from TRAIN split only (rule: no test-set peeking
+        # during feature/target selection).
+        top_tags = build_task1_top_tags(tracks[tracks["track_id"].isin(splits["train"])], top_k=20)
+        logger.info("Task 1 target tag vocabulary (top-20, from TRAIN only): %s", top_tags)
 
-    task1_df = build_task1_dataset(tracks, top_tags)
-    split_of = {tid: name for name, ids in splits.items() for tid in ids}
-    task1_df = task1_df.assign(split=task1_df["track_id"].map(split_of))
+        task1_df = build_task1_dataset(tracks, top_tags)
+        split_of = {tid: name for name, ids in splits.items() for tid in ids}
+        task1_df = task1_df.assign(split=task1_df["track_id"].map(split_of))
+
     task1_df = task1_df[task1_df["split"].notna()]
 
     train_df = task1_df[task1_df["split"] == "train"]
@@ -304,6 +403,7 @@ def train_task1(config: dict[str, Any], run_dir: Path, logger) -> None:
         examples.append({"text": test_texts[i][:300], "true_tags": true_tags, "predicted_tags": pred_tags})
 
     metrics = {
+        "text_source": text_source,
         "top_tags": top_tags,
         "history": history,
         "test": {"macro_f1": test_macro_f1, "micro_f1": test_micro_f1, "auc_pr": test_auc_pr, "loss": test_loss},
@@ -368,9 +468,9 @@ def train_cnn_baseline(
     test_ds = MelSpecDataset(splits["test"], **common_args)
 
     batch_size = config["training"]["batch_size"]
-    train_loader = TorchDataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
-    val_loader = TorchDataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=4)
-    test_loader = TorchDataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=4)
+    train_loader = TorchDataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=12)
+    val_loader = TorchDataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=12)
+    test_loader = TorchDataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=12)
 
     model = MelSpecCNN(n_mels=config["audio"]["n_mels"], num_classes=num_classes).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=config["training"]["weight_decay"])
@@ -707,9 +807,9 @@ def train_task2(config: dict[str, Any], run_dir: Path, logger) -> None:
     test_ds = SegmentGraphDataset(splits["test"], **common_args)
 
     batch_size = config["training"]["batch_size"]
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=4)
-    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=12)
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=12)
+    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=12)
 
     in_dim = 2 * config["audio"]["n_mfcc"] + (24 if config["audio"]["use_chroma"] else 0)
     model = GNNGenreClassifier(
@@ -835,6 +935,198 @@ def train_task2(config: dict[str, Any], run_dir: Path, logger) -> None:
     plt.close()
 
 
+def train_task4(config: dict[str, Any], run_dir: Path, logger) -> None:
+    """Task 4: contrastive GNN-BERT dual encoder on MusicCaps (spec 4.4).
+    InfoNCE training + R@1/5/10 retrieval evaluation (caption->audio and
+    audio->caption) + 10 qualitative retrieval examples + zero-shot tag
+    prediction from captions vs. the Task 3 supervised model."""
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    logger.info("device: %s", device)
+
+    cc = config["contrastive"]
+    df = load_musiccaps(Path(cc["dataset_root"]) / "musiccaps.csv", Path(cc["dataset_root"]) / "audio")
+    logger.info("MusicCaps clips with downloaded audio: %d / 5521", len(df))
+    splits = build_musiccaps_splits(df)
+    top_aspects = build_musiccaps_top_aspects(df[df["ytid"].isin(splits["train"])], top_k=50)
+    tagged_df = build_musiccaps_tag_dataset(df, top_aspects)
+    df = df.merge(tagged_df[["ytid", "labels"]], on="ytid")
+    split_of = {yid: name for name, ids in splits.items() for yid in ids}
+    df = df.assign(split=df["ytid"].map(split_of))
+
+    train_df = df[df["split"] == "train"]
+    val_df = df[df["split"] == "val"]
+    test_df = df[df["split"] == "test"]
+    logger.info("Task 4 dataset sizes: train=%d val=%d test=%d", len(train_df), len(val_df), len(test_df))
+
+    tokenizer = AutoTokenizer.from_pretrained(config["bert"]["model_name"])
+    cache_dir = Path("data/processed/musiccaps_graph_cache")
+    common_ds_args = dict(
+        cache_dir=cache_dir,
+        audio_config=config["audio"],
+        graph_config=config["graph"],
+        sample_rate=config["dataset"]["sample_rate"],
+        tokenizer=tokenizer,
+        max_length=config["bert"]["max_length"],
+    )
+    train_ds = MusicCapsContrastiveDataset(train_df, **common_ds_args)
+    val_ds = MusicCapsContrastiveDataset(val_df, **common_ds_args)
+    test_ds = MusicCapsContrastiveDataset(test_df, **common_ds_args)
+
+    batch_size = config["training"]["batch_size"]
+    train_loader = TorchDataLoader(train_ds, batch_size=batch_size, shuffle=True, collate_fn=contrastive_collate, drop_last=True)
+    val_loader = TorchDataLoader(val_ds, batch_size=batch_size, shuffle=False, collate_fn=contrastive_collate)
+    test_loader = TorchDataLoader(test_ds, batch_size=batch_size, shuffle=False, collate_fn=contrastive_collate)
+
+    in_dim = 2 * config["audio"]["n_mfcc"] + (24 if config["audio"]["use_chroma"] else 0)
+    model = ContrastiveDualEncoder(
+        graph_in_dim=in_dim,
+        graph_hidden_dim=config["gnn"]["hidden_dim"],
+        graph_num_layers=config["gnn"]["num_layers"],
+        graph_dropout=config["gnn"]["dropout"],
+        bert_model_name=config["bert"]["model_name"],
+        bert_freeze_layers=config["bert"]["freeze_layers"],
+        embed_dim=cc["embed_dim"],
+        temperature=cc["temperature"],
+    ).to(device)
+    trainable_params = [p for p in model.parameters() if p.requires_grad]
+    optimizer = torch.optim.Adam(trainable_params, lr=3e-4, weight_decay=config["training"]["weight_decay"])
+
+    def embed_all(loader: TorchDataLoader) -> tuple[np.ndarray, np.ndarray, list[str], list[str]]:
+        model.eval()
+        graph_embeds, text_embeds, ytids, captions = [], [], [], []
+        with torch.no_grad():
+            for batch in loader:
+                g = batch["graph_batch"].to(device)
+                ge = model.encode_graph(g.x, g.edge_index, g.batch)
+                te = model.encode_text(batch["input_ids"].to(device), batch["attention_mask"].to(device))
+                graph_embeds.append(ge.cpu().numpy())
+                text_embeds.append(te.cpu().numpy())
+                ytids += batch["ytid"]
+                captions += batch["caption"]
+        return np.concatenate(graph_embeds), np.concatenate(text_embeds), ytids, captions
+
+    def retrieval_metrics(loader: TorchDataLoader) -> dict[str, float]:
+        graph_embeds, text_embeds, _, _ = embed_all(loader)
+        sim = graph_embeds @ text_embeds.T  # (N, N): rows=audio, cols=caption
+        return {
+            "audio_to_caption_r1": retrieval_recall_at_k(sim, 1),
+            "audio_to_caption_r5": retrieval_recall_at_k(sim, 5),
+            "audio_to_caption_r10": retrieval_recall_at_k(sim, 10),
+            "caption_to_audio_r1": retrieval_recall_at_k(sim.T, 1),
+            "caption_to_audio_r5": retrieval_recall_at_k(sim.T, 5),
+            "caption_to_audio_r10": retrieval_recall_at_k(sim.T, 10),
+        }
+
+    history = {"train_loss": [], "val_loss": [], "val_audio_to_caption_r10": []}
+    best_val_r10 = -1.0
+    epochs_without_improvement = 0
+    best_state = None
+    patience = config["training"]["early_stopping_patience"]
+
+    for epoch in range(config["training"]["epochs"]):
+        model.train()
+        total_loss, n = 0.0, 0
+        for batch in train_loader:
+            g = batch["graph_batch"].to(device)
+            graph_embeds = model.encode_graph(g.x, g.edge_index, g.batch)
+            text_embeds = model.encode_text(batch["input_ids"].to(device), batch["attention_mask"].to(device))
+            loss = info_nce_loss(graph_embeds, text_embeds, temperature=cc["temperature"])
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item() * graph_embeds.size(0)
+            n += graph_embeds.size(0)
+        train_loss = total_loss / n
+
+        val_graph_embeds, val_text_embeds, _, _ = embed_all(val_loader)
+        val_sim = val_graph_embeds @ val_text_embeds.T
+        val_loss = float(info_nce_loss(torch.tensor(val_graph_embeds), torch.tensor(val_text_embeds), cc["temperature"]))
+        val_r10 = retrieval_recall_at_k(val_sim, 10)
+
+        history["train_loss"].append(train_loss)
+        history["val_loss"].append(val_loss)
+        history["val_audio_to_caption_r10"].append(val_r10)
+        logger.info("[contrastive] epoch %d: train_loss=%.4f val_loss=%.4f val_r10=%.4f", epoch, train_loss, val_loss, val_r10)
+
+        if val_r10 > best_val_r10:
+            best_val_r10 = val_r10
+            best_state = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+            if epochs_without_improvement >= patience:
+                logger.info("[contrastive] early stopping at epoch %d", epoch)
+                break
+
+    model.load_state_dict(best_state)
+    torch.save(best_state, run_dir / "best_model.pt")
+
+    test_metrics = retrieval_metrics(test_loader)
+    logger.info("=== Task 4 retrieval (test set) ===")
+    for k, v in test_metrics.items():
+        logger.info("%s: %.4f", k, v)
+
+    # 10 qualitative retrieval examples: query caption -> top-3 matched clips.
+    test_graph_embeds, test_text_embeds, test_ytids, test_captions = embed_all(test_loader)
+    sim = test_text_embeds @ test_graph_embeds.T  # rows=caption query, cols=audio candidates
+    rng = np.random.RandomState(42)
+    query_idx = rng.choice(len(test_ytids), size=min(10, len(test_ytids)), replace=False)
+    qualitative = []
+    for qi in query_idx:
+        top3 = sim[qi].argsort()[::-1][:3]
+        qualitative.append({
+            "query_caption": test_captions[qi][:300],
+            "query_ytid": test_ytids[qi],
+            "top3_matched_clips": [{"ytid": test_ytids[j], "caption": test_captions[j][:200]} for j in top3],
+        })
+
+    # Zero-shot tag prediction from captions: encode each candidate aspect-tag NAME
+    # as a text prototype, predict via nearest-prototype cosine similarity (no
+    # supervised head/threshold tuning), then compare against Task 3's supervised
+    # FMA tag-classification numbers (different dataset/vocab, so this is an
+    # honest capability comparison, not an apples-to-apples one).
+    model.eval()
+    tag_enc = tokenizer(top_aspects, truncation=True, padding=True, max_length=16, return_tensors="pt")
+    with torch.no_grad():
+        tag_prototypes = model.encode_text(tag_enc["input_ids"].to(device), tag_enc["attention_mask"].to(device)).cpu().numpy()
+    zero_shot_sim = test_graph_embeds @ tag_prototypes.T  # (N_test, num_aspects)
+    zs_threshold = zero_shot_sim.mean() + zero_shot_sim.std()  # simple global threshold, no val tuning (true zero-shot)
+    zero_shot_preds = (zero_shot_sim >= zs_threshold).astype(int)
+    zero_shot_labels = np.array(test_df["labels"].tolist())
+    zero_shot_macro_f1 = f1_score(zero_shot_labels, zero_shot_preds, average="macro", zero_division=0)
+    zero_shot_micro_f1 = f1_score(zero_shot_labels, zero_shot_preds, average="micro", zero_division=0)
+    logger.info("[zero-shot] macro_f1=%.4f micro_f1=%.4f (vs Task3 supervised, see metrics.json)", zero_shot_macro_f1, zero_shot_micro_f1)
+
+    metrics = {
+        "top_aspects": top_aspects,
+        "history": history,
+        "test_retrieval": test_metrics,
+        "dataset_sizes": {"train": len(train_df), "val": len(val_df), "test": len(test_df)},
+        "qualitative_retrieval_examples": qualitative,
+        "zero_shot_tag_prediction": {
+            "macro_f1": zero_shot_macro_f1,
+            "micro_f1": zero_shot_micro_f1,
+            "note": "Zero-shot on MusicCaps aspect vocabulary; compare against Task3's supervised FMA tag results in results/task3/*/metrics.json (different dataset/tag vocab).",
+        },
+    }
+    with (run_dir / "metrics.json").open("w") as f:
+        json.dump(metrics, f, indent=2)
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    axes[0].plot(history["train_loss"], label="train")
+    axes[0].plot(history["val_loss"], label="val")
+    axes[0].set_title("Task 4 InfoNCE loss")
+    axes[0].set_xlabel("epoch")
+    axes[0].legend()
+    axes[1].plot(history["val_audio_to_caption_r10"], label="val R@10 (audio->caption)")
+    axes[1].set_title("Task 4 validation retrieval")
+    axes[1].set_xlabel("epoch")
+    axes[1].legend()
+    plt.tight_layout()
+    plt.savefig(run_dir / "training_curves.png", dpi=130)
+    plt.close()
+
+
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
@@ -854,7 +1146,7 @@ def main() -> None:
     logger.info("Run directory: %s", run_dir)
 
     if args.task == 1:
-        train_task1(config, run_dir, logger)
+        train_task1(config, run_dir, logger, text_source=args.text_source)
         return
     if args.task == 2:
         train_task2(config, run_dir, logger)
@@ -862,7 +1154,9 @@ def main() -> None:
     if args.task == 3:
         train_task3(config, run_dir, logger)
         return
-    raise NotImplementedError("Task 4 (optional) training implemented in Phase 12.")
+    train_task4(config, run_dir, logger)
+
+
 
 
 if __name__ == "__main__":
