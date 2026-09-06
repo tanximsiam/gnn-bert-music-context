@@ -83,7 +83,7 @@ pytest tests/
 
 | Model | Macro-F1 | Micro-F1 | AUC-PR |
 |---|---|---|---|
-| BERT (artist bio) | 0.061 | 0.064 | 0.114 |
+| BERT (artist bio) | 0.066 | 0.083 | 0.136 |
 
 Artist-bio text is a weak signal for tags (bios describe artist backstory, not
 musical style) — a genuine, expected result rather than a bug.
