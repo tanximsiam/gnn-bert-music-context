@@ -345,8 +345,8 @@
     }
   ],
   "zero_shot_tag_prediction": {
-    "macro_f1": 0.07585763153454612,
-    "micro_f1": 0.08706583815236521,
-    "note": "Zero-shot on MusicCaps aspect vocabulary; compare against Task3's supervised FMA tag results in results/task3/*/metrics.json (different dataset/tag vocab)."
+    "macro_f1": 0.07420329376155067,
+    "micro_f1": 0.09271717951545899,
+    "note": "Zero-shot on MusicCaps aspect vocabulary (test_text_embeds @ tag_name_prototypes, corrected from an earlier bug that used test_graph_embeds); compare against Task3's supervised FMA tag results in results/task3/*/metrics.json (different dataset/tag vocab)."
   }
 }

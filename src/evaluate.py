@@ -1,14 +1,16 @@
 """Entry point for evaluation. Usage: python -m src.evaluate --task {1,2,3,4} --checkpoint PATH
 
-Computes Macro-F1/Micro-F1/AUC-PR (tag tasks), MAE/R^2 (DEAM emotion, if
-enabled), or R@1/5/10 (Task 4 retrieval), and writes results to
-results/metrics/ and results/plots/. Never fabricates numbers: if no
-checkpoint/run exists yet, this must fail loudly rather than print
-placeholder metrics.
+Computes Macro-F1/Micro-F1/AUC-PR (tag tasks, Tasks 1/3) or R@1/5/10 (Task 4
+retrieval), and writes results to results/metrics/ and results/plots/. DEAM
+valence/arousal MAE/R^2 is NOT implemented (DEAM requires manual download and
+is currently disabled — see config.yaml's `emotion` section and
+src/datasets.py:load_deam). Never fabricates numbers: if no checkpoint/run
+exists yet, this must fail loudly rather than print placeholder metrics.
 """
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 from pathlib import Path
 
@@ -17,6 +19,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 from sklearn.manifold import TSNE
 from sklearn.metrics import average_precision_score, f1_score
@@ -28,7 +31,7 @@ from src.bert_encoder import BertTagClassifier
 from src.contrastive import ContrastiveDualEncoder, retrieval_recall_at_k
 from src.datasets import (
     build_musiccaps_splits,
-    build_task1_dataset,
+    build_musiccaps_tag_dataset,
     build_task3_dataset,
     load_corrupted_track_ids,
     load_fma_metadata,
@@ -66,7 +69,8 @@ def _mean_auc_pr(labels: np.ndarray, probs: np.ndarray) -> float:
 def run_task1_evaluation(config: dict, checkpoint_path: str, logger) -> None:
     """Reload a trained Task 1 BERT checkpoint and recompute test metrics
     independently of train.py, using the same tag vocabulary and per-tag
-    thresholds recorded in that run's metrics.json (tuned on validation only)."""
+    thresholds recorded in that run's metrics.json (tuned on validation only).
+    Task 1 is the MusicCaps caption -> tag proxy classifier (spec section 4.1)."""
     run_dir = Path(checkpoint_path).parent
     metrics_path = run_dir / "metrics.json"
     if not metrics_path.exists():
@@ -77,13 +81,13 @@ def run_task1_evaluation(config: dict, checkpoint_path: str, logger) -> None:
     thresholds = np.array(train_metrics["per_tag_thresholds"])
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    subset = config["dataset"]["name"].replace("fma_", "")
-    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset=subset)
-    corrupted_ids = load_corrupted_track_ids()
-    splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
-    task1_df = build_task1_dataset(tracks, top_tags)
-    split_of = {tid: name for name, ids in splits.items() for tid in ids}
-    task1_df = task1_df.assign(split=task1_df["track_id"].map(split_of))
+    cc = config["contrastive"]
+    mc_df = pd.read_csv(Path(cc["dataset_root"]) / "musiccaps.csv")
+    mc_df["aspect_list"] = mc_df["aspect_list"].apply(ast.literal_eval)
+    mc_splits = build_musiccaps_splits(mc_df)
+    task1_df = build_musiccaps_tag_dataset(mc_df, top_tags)
+    split_of = {yid: name for name, ids in mc_splits.items() for yid in ids}
+    task1_df = task1_df.assign(split=task1_df["ytid"].map(split_of))
     test_df = task1_df[task1_df["split"] == "test"]
 
     tokenizer = AutoTokenizer.from_pretrained(config["bert"]["model_name"])
@@ -236,14 +240,43 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--task", type=int, required=True, choices=[1, 2, 3, 4])
     parser.add_argument("--checkpoint", type=str, required=True)
     parser.add_argument("--config", type=str, default="config.yaml")
+    parser.add_argument(
+        "--variant", type=str, default=None, choices=["early_concat", "cross_attention"],
+        help="Task 3 only: which fusion variant's checkpoint is being evaluated for the "
+        "t-SNE embedding. Defaults to inferring from the checkpoint filename "
+        "(e.g. early_concat_best_model.pt -> early_concat).",
+    )
     return parser.parse_args()
 
 
-def run_task3_analysis(config: dict, checkpoint_path: str, logger) -> None:
+def _infer_task3_variant(checkpoint_path: str, explicit_variant: str | None) -> str:
+    """Task 3 checkpoints are best_model.pt files named {variant}_best_model.pt for
+    each of the 4 ablations. Only early_concat/cross_attention have a fused embedding
+    z (via FusionModel.embed) suitable for the t-SNE plot, so this must match whichever
+    checkpoint was actually passed in rather than always assuming cross_attention."""
+    if explicit_variant is not None:
+        return explicit_variant
+    name = Path(checkpoint_path).name
+    for variant in ("early_concat", "cross_attention"):
+        if name.startswith(variant):
+            return variant
+    raise ValueError(
+        f"Could not infer fusion variant from checkpoint filename '{name}'; pass --variant "
+        "early_concat|cross_attention explicitly (gnn_only/bert_only checkpoints have no "
+        "fused embedding z and aren't supported by run_task3_analysis)."
+    )
+
+
+def run_task3_analysis(config: dict, checkpoint_path: str, logger, variant: str | None = None) -> None:
     """Phase 10: t-SNE of the fused embedding z (colored by genre) + 3 case
     studies (graph structure + text + true/predicted tags across all
     4 ablation variants). Requires a completed `train_task3` run directory
-    (with per-variant *_best_model.pt checkpoints and metrics.json)."""
+    (with per-variant *_best_model.pt checkpoints and metrics.json). `variant`
+    selects which fusion mode the given --checkpoint was trained with
+    (early_concat or cross_attention); inferred from the checkpoint filename
+    if not given explicitly."""
+    variant = _infer_task3_variant(checkpoint_path, variant)
+    logger.info("Task 3 fusion variant for t-SNE embedding: %s", variant)
     run_dir = Path(checkpoint_path).parent
     metrics_path = run_dir / "metrics.json"
     if not metrics_path.exists():
@@ -289,7 +322,7 @@ def run_task3_analysis(config: dict, checkpoint_path: str, logger) -> None:
         bert_model_name=config["bert"]["model_name"],
         bert_freeze_layers=config["bert"]["freeze_layers"],
         num_labels=num_labels,
-        mode="cross_attention",
+        mode=variant,
     ).to(device)
     model.load_state_dict(torch.load(checkpoint_path, map_location=device))
     model.eval()
@@ -470,7 +503,7 @@ def main() -> None:
         run_task2_evaluation(config, args.checkpoint, logger)
         return
     if args.task == 3:
-        run_task3_analysis(config, args.checkpoint, logger)
+        run_task3_analysis(config, args.checkpoint, logger, variant=args.variant)
         return
     run_task4_evaluation(config, args.checkpoint, logger)
 

@@ -1,0 +1,7 @@
+{
+  "checkpoint": "results/task1/20260906-230137/bert_best_model.pt",
+  "macro_f1": 0.44361322904146083,
+  "micro_f1": 0.5110927468056703,
+  "auc_pr": 0.4529030788044863,
+  "num_test": 2858
+}

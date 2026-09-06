@@ -64,11 +64,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--epochs", type=int, default=None, help="override config training.epochs")
     parser.add_argument("--patience", type=int, default=None, help="override config training.early_stopping_patience")
     parser.add_argument("--freeze-layers", type=str, default=None, help="override config bert.freeze_layers")
-    parser.add_argument(
-        "--text-source", type=str, default="fma_bio", choices=["fma_bio", "musiccaps"],
-        help="Task 1 only: 'fma_bio' (artist bio -> FMA tags, default) or 'musiccaps' "
-        "(caption -> aspect-tag proxy, spec section 4.1's MusicCaps alternative)",
-    )
     return parser.parse_args()
 
 
@@ -243,40 +238,25 @@ def contrastive_collate(batch: list[dict[str, Any]]) -> dict[str, Any]:
     return out
 
 
-def train_task1(config: dict[str, Any], run_dir: Path, logger, text_source: str = "fma_bio") -> None:
-    """Task 1: multi-label BERT tag classifier. text_source='fma_bio' (default)
-    trains on FMA artist-bio text -> FMA track tags. text_source='musiccaps' is
-    the spec's alternative Task 1 formulation (section 4.1): MusicCaps caption
-    -> aspect-tag proxy (doesn't need any audio download, text/labels only)."""
+def train_task1(config: dict[str, Any], run_dir: Path, logger) -> None:
+    """Task 1: multi-label BERT tag classifier (spec section 4.1). Input text =
+    MusicCaps caption, target = multi-hot over the top-50 aspect_list entries
+    (the spec's literal "MusicCaps caption -> tag proxy" option)."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    logger.info("device: %s, text_source: %s", device, text_source)
+    logger.info("device: %s", device)
 
-    if text_source == "musiccaps":
-        cc = config["contrastive"]
-        mc_df = pd.read_csv(Path(cc["dataset_root"]) / "musiccaps.csv")
-        mc_df["aspect_list"] = mc_df["aspect_list"].apply(ast.literal_eval)
-        mc_splits = build_musiccaps_splits(mc_df)
-        top_tags = build_musiccaps_top_aspects(mc_df[mc_df["ytid"].isin(mc_splits["train"])], top_k=50)
-        logger.info("Task 1 (MusicCaps) target aspect vocabulary (top-50, from TRAIN only): %s", top_tags)
-        task1_df = build_musiccaps_tag_dataset(mc_df, top_tags)
-        split_of = {yid: name for name, ids in mc_splits.items() for yid in ids}
-        task1_df = task1_df.assign(split=task1_df["ytid"].map(split_of))
-    else:
-        subset = config["dataset"]["name"].replace("fma_", "")
-        tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset=subset)
-        corrupted_ids = load_corrupted_track_ids()
-        splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
-
-        # Target tag vocabulary chosen from TRAIN split only (rule: no test-set peeking
-        # during feature/target selection).
-        top_tags = build_task1_top_tags(tracks[tracks["track_id"].isin(splits["train"])], top_k=20)
-        logger.info("Task 1 target tag vocabulary (top-20, from TRAIN only): %s", top_tags)
-
-        task1_df = build_task1_dataset(tracks, top_tags)
-        split_of = {tid: name for name, ids in splits.items() for tid in ids}
-        task1_df = task1_df.assign(split=task1_df["track_id"].map(split_of))
+    cc = config["contrastive"]
+    mc_df = pd.read_csv(Path(cc["dataset_root"]) / "musiccaps.csv")
+    mc_df["aspect_list"] = mc_df["aspect_list"].apply(ast.literal_eval)
+    mc_splits = build_musiccaps_splits(mc_df)
+    top_tags = build_musiccaps_top_aspects(mc_df[mc_df["ytid"].isin(mc_splits["train"])], top_k=50)
+    logger.info("Task 1 target aspect vocabulary (top-50, from TRAIN only): %s", top_tags)
+    task1_df = build_musiccaps_tag_dataset(mc_df, top_tags)
+    split_of = {yid: name for name, ids in mc_splits.items() for yid in ids}
+    task1_df = task1_df.assign(split=task1_df["ytid"].map(split_of))
 
     task1_df = task1_df[task1_df["split"].notna()]
+
 
     train_df = task1_df[task1_df["split"] == "train"]
     val_df = task1_df[task1_df["split"] == "val"]
@@ -400,10 +380,26 @@ def train_task1(config: dict[str, Any], run_dir: Path, logger, text_source: str 
     for i in range(min(5, len(test_texts))):
         pred_tags = [top_tags[k] for k in range(len(top_tags)) if test_preds[i][k] == 1]
         true_tags = [top_tags[k] for k in range(len(top_tags)) if test_labels[i][k] == 1]
-        examples.append({"text": test_texts[i][:300], "true_tags": true_tags, "predicted_tags": pred_tags})
+        # Attention visualization (spec 4.1, optional deliverable): last-layer, head-averaged
+        # attention FROM the [CLS] token TO each input token, for this example's own encoding.
+        enc = tokenizer(
+            test_texts[i], truncation=True, padding="max_length", max_length=max_length, return_tensors="pt"
+        )
+        with torch.no_grad():
+            _, cls_attention = model(enc["input_ids"].to(device), enc["attention_mask"].to(device), return_attention=True)
+        tokens = tokenizer.convert_ids_to_tokens(enc["input_ids"][0].tolist())
+        weights = cls_attention[0].cpu().numpy()
+        ranked = weights.argsort()[::-1]
+        attention_top_tokens = [
+            {"token": tokens[j], "weight": round(float(weights[j]), 4)}
+            for j in ranked if tokens[j] not in ("[PAD]", "[CLS]", "[SEP]")
+        ][:10]
+        examples.append({
+            "text": test_texts[i][:300], "true_tags": true_tags, "predicted_tags": pred_tags,
+            "attention_top_tokens": attention_top_tokens,
+        })
 
     metrics = {
-        "text_source": text_source,
         "top_tags": top_tags,
         "history": history,
         "test": {"macro_f1": test_macro_f1, "micro_f1": test_micro_f1, "auc_pr": test_auc_pr, "loss": test_loss},
@@ -429,6 +425,19 @@ def train_task1(config: dict[str, Any], run_dir: Path, logger, text_source: str 
     plt.tight_layout()
     plt.savefig(run_dir / "training_curves.png", dpi=130)
     plt.close()
+
+    fig, axes = plt.subplots(len(examples), 1, figsize=(8, 2.2 * len(examples)), squeeze=False)
+    for i, ex in enumerate(examples):
+        ax = axes[i, 0]
+        toks = [t["token"] for t in ex["attention_top_tokens"]][::-1]
+        wts = [t["weight"] for t in ex["attention_top_tokens"]][::-1]
+        ax.barh(toks, wts, color="steelblue")
+        ax.set_title(f"example {i + 1}: CLS attention over top tokens", fontsize=9)
+        ax.tick_params(axis="both", labelsize=8)
+    plt.tight_layout()
+    plt.savefig(run_dir / "attention_examples.png", dpi=130)
+    plt.close()
+
 
 
 def compute_class_weights(
@@ -556,9 +565,10 @@ def train_cnn_baseline(
 
 def train_task3(config: dict[str, Any], run_dir: Path, logger) -> None:
     """Task 3: GNN+BERT fusion ablations (BERT-only, GNN-only, early-concat,
-    cross-attention) predicting genre + mood/contextual tags jointly (spec
-    section 4.3), on the same tagged subset/splits so all four variants are
-    directly comparable."""
+    cross-attention) predicting genre + contextual/music tags jointly (spec
+    section 4.3; the tag vocabulary is genre-adjacent context, not a clean mood
+    taxonomy — see build_task3_dataset), on the same tagged subset/splits so all
+    four variants are directly comparable."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info("device: %s", device)
 
@@ -1089,7 +1099,7 @@ def train_task4(config: dict[str, Any], run_dir: Path, logger) -> None:
     tag_enc = tokenizer(top_aspects, truncation=True, padding=True, max_length=16, return_tensors="pt")
     with torch.no_grad():
         tag_prototypes = model.encode_text(tag_enc["input_ids"].to(device), tag_enc["attention_mask"].to(device)).cpu().numpy()
-    zero_shot_sim = test_graph_embeds @ tag_prototypes.T  # (N_test, num_aspects)
+    zero_shot_sim = test_text_embeds @ tag_prototypes.T  # (N_test, num_aspects): caption-to-tag-name similarity
     zs_threshold = zero_shot_sim.mean() + zero_shot_sim.std()  # simple global threshold, no val tuning (true zero-shot)
     zero_shot_preds = (zero_shot_sim >= zs_threshold).astype(int)
     zero_shot_labels = np.array(test_df["labels"].tolist())
@@ -1146,7 +1156,7 @@ def main() -> None:
     logger.info("Run directory: %s", run_dir)
 
     if args.task == 1:
-        train_task1(config, run_dir, logger, text_source=args.text_source)
+        train_task1(config, run_dir, logger)
         return
     if args.task == 2:
         train_task2(config, run_dir, logger)

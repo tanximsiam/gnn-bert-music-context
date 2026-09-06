@@ -20,3 +20,9 @@ results/checkpoints/
 
 # OS/editor
 .DS_Store
+
+# Cookies/session files (used by musiccaps_prep.py --cookies for yt-dlp) and secrets
+cookies.txt
+*cookies*.txt
+*.cookies.txt
+.env

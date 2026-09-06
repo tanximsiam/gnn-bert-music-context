@@ -181,7 +181,10 @@ def build_task3_dataset(
 ) -> pd.DataFrame:
     """Build the Task 3 multi-context dataset: target = genre (one-hot) CONCATENATED
     with the top-K contextual tags (multi-hot), so the fusion ablations jointly predict
-    "genre + mood tags" (spec section 4.3) instead of only the bare tag vocabulary.
+    genre + contextual/music tags (spec section 4.3 calls this "genre + mood tags", but
+    the actual top-K tag vocabulary is data-driven by frequency and includes many
+    non-mood descriptors like 'electronic'/'idm' alongside mood-related ones like
+    'psychedelic'/'dark') instead of only the bare tag vocabulary.
     """
     base = build_task1_dataset(tracks_df, top_tags)
     genre_names = sorted(genre_label_map, key=genre_label_map.get)
@@ -242,10 +245,10 @@ def build_musiccaps_top_aspects(df: pd.DataFrame, top_k: int = 50) -> list[str]:
 
 
 def build_musiccaps_tag_dataset(df: pd.DataFrame, top_aspects: list[str]) -> pd.DataFrame:
-    """MusicCaps caption -> aspect-tag proxy dataset (spec 4.1's suggested
-    'MusicCaps caption -> tag proxy' Task 1 alternative): input text = the
-    free-text caption, multi-hot target = which of top_aspects appear in this
-    clip's aspect_list."""
+    """MusicCaps caption -> aspect-tag proxy dataset: the Task 1 deliverable
+    (spec section 4.1's literal "MusicCaps caption -> tag proxy" option).
+    Input text = the free-text caption, multi-hot target = which of
+    top_aspects appear in this clip's aspect_list."""
     def make_row(row: pd.Series) -> pd.Series:
         aspects_lower = {a.lower().strip() for a in row["aspect_list"]}
         labels = [1 if a in aspects_lower else 0 for a in top_aspects]

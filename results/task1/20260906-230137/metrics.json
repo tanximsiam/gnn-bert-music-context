@@ -1,5 +1,4 @@
 {
-  "text_source": "musiccaps",
   "top_tags": [
     "low quality",
     "instrumental",
@@ -285,6 +284,48 @@
         "emotional",
         "mellow",
         "relaxing"
+      ],
+      "attention_top_tokens": [
+        {
+          "token": "the",
+          "weight": 0.1569
+        },
+        {
+          "token": "recording",
+          "weight": 0.1015
+        },
+        {
+          "token": "song",
+          "weight": 0.0576
+        },
+        {
+          "token": "features",
+          "weight": 0.0555
+        },
+        {
+          "token": "it",
+          "weight": 0.0492
+        },
+        {
+          "token": "a",
+          "weight": 0.0446
+        },
+        {
+          "token": "ballad",
+          "weight": 0.0326
+        },
+        {
+          "token": "quality",
+          "weight": 0.0311
+        },
+        {
+          "token": "low",
+          "weight": 0.0304
+        },
+        {
+          "token": "sounds",
+          "weight": 0.0264
+        }
       ]
     },
     {
@@ -295,6 +336,48 @@
       "predicted_tags": [
         "amateur recording",
         "uptempo"
+      ],
+      "attention_top_tokens": [
+        {
+          "token": "may",
+          "weight": 0.0896
+        },
+        {
+          "token": "this",
+          "weight": 0.0819
+        },
+        {
+          "token": "a",
+          "weight": 0.0713
+        },
+        {
+          "token": "song",
+          "weight": 0.053
+        },
+        {
+          "token": "is",
+          "weight": 0.0516
+        },
+        {
+          "token": "recording",
+          "weight": 0.0442
+        },
+        {
+          "token": "the",
+          "weight": 0.0415
+        },
+        {
+          "token": "voice",
+          "weight": 0.0348
+        },
+        {
+          "token": "male",
+          "weight": 0.0296
+        },
+        {
+          "token": "melody",
+          "weight": 0.0277
+        }
       ]
     },
     {
@@ -313,6 +396,48 @@
         "pop",
         "e-bass",
         "uptempo"
+      ],
+      "attention_top_tokens": [
+        {
+          "token": "this",
+          "weight": 0.2824
+        },
+        {
+          "token": "song",
+          "weight": 0.1313
+        },
+        {
+          "token": "contains",
+          "weight": 0.0729
+        },
+        {
+          "token": "is",
+          "weight": 0.024
+        },
+        {
+          "token": "digital",
+          "weight": 0.0193
+        },
+        {
+          "token": "drums",
+          "weight": 0.0183
+        },
+        {
+          "token": "is",
+          "weight": 0.0152
+        },
+        {
+          "token": "a",
+          "weight": 0.015
+        },
+        {
+          "token": "groove",
+          "weight": 0.014
+        },
+        {
+          "token": "guitars",
+          "weight": 0.014
+        }
       ]
     },
     {
@@ -321,7 +446,49 @@
         "instrumental",
         "bass guitar"
       ],
-      "predicted_tags": []
+      "predicted_tags": [],
+      "attention_top_tokens": [
+        {
+          "token": "this",
+          "weight": 0.1687
+        },
+        {
+          "token": "clip",
+          "weight": 0.0681
+        },
+        {
+          "token": "the",
+          "weight": 0.0663
+        },
+        {
+          "token": "is",
+          "weight": 0.061
+        },
+        {
+          "token": "songs",
+          "weight": 0.0496
+        },
+        {
+          "token": "tracks",
+          "weight": 0.0408
+        },
+        {
+          "token": "are",
+          "weight": 0.0395
+        },
+        {
+          "token": "three",
+          "weight": 0.0253
+        },
+        {
+          "token": "playing",
+          "weight": 0.0246
+        },
+        {
+          "token": "the",
+          "weight": 0.0238
+        }
+      ]
     },
     {
       "text": "A male singer sings this groovy melody. The song is a techno dance song with a groovy bass line, strong drumming rhythm and a keyboard accompaniment. The song is so groovy and serves as a dance track for the dancing children. The audio quality is very poor with high gains and hissing noise.",
@@ -332,6 +499,48 @@
       ],
       "predicted_tags": [
         "medium tempo"
+      ],
+      "attention_top_tokens": [
+        {
+          "token": "the",
+          "weight": 0.0841
+        },
+        {
+          "token": "a",
+          "weight": 0.0792
+        },
+        {
+          "token": "song",
+          "weight": 0.0711
+        },
+        {
+          "token": "this",
+          "weight": 0.0594
+        },
+        {
+          "token": "the",
+          "weight": 0.0396
+        },
+        {
+          "token": "song",
+          "weight": 0.0367
+        },
+        {
+          "token": "singer",
+          "weight": 0.0328
+        },
+        {
+          "token": "the",
+          "weight": 0.0311
+        },
+        {
+          "token": "is",
+          "weight": 0.0308
+        },
+        {
+          "token": "male",
+          "weight": 0.0303
+        }
       ]
     }
   ],

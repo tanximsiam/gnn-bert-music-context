@@ -1,0 +1,319 @@
+[
+  {
+    "track_id": 98078,
+    "genre": "Electronic",
+    "text": "The trio first met at a friendly Scrabble evening in the countryside. Heavy in triple-word scores and assumed neologisms, the three rascals and their mischievous verbs finally got along to found the \u201cNeo-neologisms for subversive Scrabble\u201d association, an avant-garde innovative concept they proposed",
+    "graph_path": {
+      "temporal_path": [
+        "seg0->seg1",
+        "seg1->seg2",
+        "seg2->seg3",
+        "seg3->seg4",
+        "seg4->seg5",
+        "seg5->seg6"
+      ],
+      "similarity_shortcuts": [
+        "seg3~seg5"
+      ]
+    },
+    "num_graph_nodes": 7,
+    "num_graph_edges": 14,
+    "true_tags": [
+      "genre:Electronic",
+      "electronic",
+      "punk",
+      "rock",
+      "electro"
+    ],
+    "predicted_tags_by_variant": {
+      "gnn_only": [
+        "genre:Blues",
+        "genre:Electronic",
+        "genre:Pop",
+        "experimental",
+        "electronic",
+        "horror",
+        "techno",
+        "hip hop",
+        "electro",
+        "noise"
+      ],
+      "bert_only": [
+        "genre:Electronic",
+        "genre:Old-Time / Historic",
+        "genre:Pop",
+        "electronic",
+        "idm",
+        "electronica",
+        "horror",
+        "electro",
+        "noise"
+      ],
+      "early_concat": [
+        "genre:Electronic",
+        "genre:Pop",
+        "experimental",
+        "electronic",
+        "electronica",
+        "techno",
+        "punk",
+        "electro"
+      ],
+      "cross_attention": [
+        "genre:Electronic",
+        "genre:Hip-Hop",
+        "genre:Pop",
+        "electronic",
+        "punk",
+        "hip hop",
+        "electro"
+      ]
+    },
+    "cross_attention_text_alignment": [
+      {
+        "token": "the",
+        "weight": 0.4358
+      },
+      {
+        "token": "the",
+        "weight": 0.189
+      },
+      {
+        "token": "the",
+        "weight": 0.1292
+      },
+      {
+        "token": "-",
+        "weight": 0.0637
+      },
+      {
+        "token": "they",
+        "weight": 0.0454
+      },
+      {
+        "token": "they",
+        "weight": 0.0338
+      },
+      {
+        "token": "-",
+        "weight": 0.0149
+      },
+      {
+        "token": "they",
+        "weight": 0.0107
+      },
+      {
+        "token": "the",
+        "weight": 0.009
+      },
+      {
+        "token": "their",
+        "weight": 0.0085
+      }
+    ]
+  },
+  {
+    "track_id": 125600,
+    "genre": "Spoken",
+    "text": "No artist description available.",
+    "graph_path": {
+      "temporal_path": [
+        "seg0->seg1",
+        "seg1->seg2",
+        "seg2->seg3",
+        "seg3->seg4",
+        "seg4->seg5"
+      ],
+      "similarity_shortcuts": []
+    },
+    "num_graph_nodes": 6,
+    "num_graph_edges": 10,
+    "true_tags": [
+      "genre:Spoken"
+    ],
+    "predicted_tags_by_variant": {
+      "gnn_only": [
+        "genre:Blues",
+        "genre:Electronic",
+        "genre:Experimental",
+        "genre:Jazz",
+        "genre:Pop",
+        "experimental",
+        "electronic",
+        "instrumental",
+        "idm",
+        "horror",
+        "techno",
+        "electro",
+        "noise",
+        "psychedelic"
+      ],
+      "bert_only": [
+        "genre:Electronic",
+        "genre:Experimental",
+        "genre:Old-Time / Historic",
+        "genre:Pop",
+        "electronic",
+        "electronica",
+        "horror",
+        "techno",
+        "hip hop",
+        "electro",
+        "noise"
+      ],
+      "early_concat": [
+        "genre:Electronic",
+        "genre:Pop",
+        "experimental",
+        "electronic",
+        "electronica",
+        "horror",
+        "techno",
+        "hip hop",
+        "electro"
+      ],
+      "cross_attention": [
+        "genre:Blues",
+        "genre:Electronic",
+        "genre:Experimental",
+        "genre:International",
+        "genre:Pop",
+        "experimental",
+        "electronic",
+        "idm",
+        "electronica",
+        "horror",
+        "techno",
+        "hip hop",
+        "electro",
+        "jazz"
+      ]
+    },
+    "cross_attention_text_alignment": [
+      {
+        "token": "available",
+        "weight": 0.4759
+      },
+      {
+        "token": "no",
+        "weight": 0.1439
+      },
+      {
+        "token": "description",
+        "weight": 0.1261
+      },
+      {
+        "token": "artist",
+        "weight": 0.1125
+      },
+      {
+        "token": ".",
+        "weight": 0.0271
+      }
+    ]
+  },
+  {
+    "track_id": 5577,
+    "genre": "Rock",
+    "text": "One of the most difficult to categorize musicians in rock, R. Stevie Moore is a true original. Bypassing the traditional recording industry more thoroughly than just about any internationally known singer/songwriter ever has, Moore has self-released literally thousands of songs through The R. Stevie",
+    "graph_path": {
+      "temporal_path": [
+        "seg0->seg1",
+        "seg1->seg2",
+        "seg2->seg3",
+        "seg3->seg4",
+        "seg4->seg5"
+      ],
+      "similarity_shortcuts": []
+    },
+    "num_graph_nodes": 6,
+    "num_graph_edges": 10,
+    "true_tags": [
+      "genre:Rock"
+    ],
+    "predicted_tags_by_variant": {
+      "gnn_only": [
+        "genre:Blues",
+        "genre:Experimental",
+        "genre:Instrumental",
+        "genre:Pop",
+        "experimental",
+        "instrumental",
+        "horror",
+        "acoustic",
+        "noise",
+        "soundtrack"
+      ],
+      "bert_only": [
+        "genre:Blues",
+        "genre:Folk",
+        "genre:Instrumental",
+        "genre:Old-Time / Historic",
+        "genre:Pop",
+        "instrumental",
+        "rock",
+        "hip hop",
+        "acoustic",
+        "soundtrack"
+      ],
+      "early_concat": [
+        "genre:Folk",
+        "genre:Pop",
+        "genre:Rock",
+        "instrumental",
+        "punk"
+      ],
+      "cross_attention": [
+        "genre:Blues",
+        "genre:Instrumental",
+        "genre:Pop",
+        "experimental",
+        "acoustic",
+        "noise",
+        "soundtrack"
+      ]
+    },
+    "cross_attention_text_alignment": [
+      {
+        "token": ".",
+        "weight": 0.484
+      },
+      {
+        "token": "the",
+        "weight": 0.0563
+      },
+      {
+        "token": "-",
+        "weight": 0.0525
+      },
+      {
+        "token": "'",
+        "weight": 0.0515
+      },
+      {
+        "token": ".",
+        "weight": 0.0435
+      },
+      {
+        "token": "the",
+        "weight": 0.0435
+      },
+      {
+        "token": "-",
+        "weight": 0.0397
+      },
+      {
+        "token": ".",
+        "weight": 0.032
+      },
+      {
+        "token": "the",
+        "weight": 0.0196
+      },
+      {
+        "token": "/",
+        "weight": 0.0143
+      }
+    ]
+  }
+]

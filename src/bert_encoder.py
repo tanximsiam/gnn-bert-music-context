@@ -1,7 +1,8 @@
 """BERT/DistilBERT text encoder with multi-label tag classification head.
 
 Task 1: multi-label tag classifier, y_k = sigmoid(w_k^T CLS(BERT(x)) + b_k),
-trained with per-tag BCE on raw artist bio text.
+trained with per-tag BCE on MusicCaps caption text (spec section 4.1's
+"caption -> tag proxy" formulation).
 """
 from __future__ import annotations
 
@@ -33,15 +34,25 @@ class BertTagClassifier(nn.Module):
 
     def __init__(self, model_name: str, num_tags: int, freeze_layers: str = "all"):
         super().__init__()
-        self.bert = AutoModel.from_pretrained(model_name)
+        # eager attention (not sdpa) is required for output_attentions=True to work,
+        # needed for the Task 1 attention-visualization deliverable.
+        self.bert = AutoModel.from_pretrained(model_name, attn_implementation="eager")
         hidden_size = self.bert.config.hidden_size
         self.head = nn.Linear(hidden_size, num_tags)
         apply_bert_freeze(self.bert, freeze_layers)
 
-    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor) -> torch.Tensor:
-        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+    def forward(
+        self, input_ids: torch.Tensor, attention_mask: torch.Tensor, return_attention: bool = False
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask, output_attentions=return_attention)
         cls = outputs.last_hidden_state[:, 0, :]  # [CLS] token representation
-        return self.head(cls)  # logits; use BCEWithLogitsLoss for multi-label
+        logits = self.head(cls)  # logits; use BCEWithLogitsLoss for multi-label
+        if not return_attention:
+            return logits
+        # Last layer, head-averaged attention FROM the CLS token TO every input token
+        # (spec's "example predictions with attention visualization" deliverable).
+        cls_attention = outputs.attentions[-1][:, :, 0, :].mean(dim=1)  # (B, L)
+        return logits, cls_attention
 
 
 class BertTextEncoder(nn.Module):
