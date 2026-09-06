@@ -1,0 +1,30 @@
+{
+  "num_tracks": 25000,
+  "num_artists": 5545,
+  "num_genres": 16,
+  "genre_counts": {
+    "Rock": 7103,
+    "Electronic": 6314,
+    "Experimental": 2251,
+    "Hip-Hop": 2201,
+    "Folk": 1519,
+    "Instrumental": 1350,
+    "Pop": 1186,
+    "International": 1018,
+    "Classical": 619,
+    "Old-Time / Historic": 510,
+    "Jazz": 384,
+    "Country": 178,
+    "Soul-RnB": 154,
+    "Spoken": 118,
+    "Blues": 74,
+    "Easy Listening": 21
+  },
+  "split_counts": {
+    "training": 19922,
+    "test": 2573,
+    "validation": 2505
+  },
+  "num_tracks_with_track_tags": 4410,
+  "num_tracks_with_artist_bio": 17493
+}

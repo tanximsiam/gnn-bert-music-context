@@ -1,0 +1,188 @@
+{
+  "top_tags": [
+    "experimental",
+    "electronic",
+    "instrumental",
+    "classical",
+    "idm",
+    "electronica",
+    "horror",
+    "techno",
+    "tracks to sync",
+    "punk",
+    "rock",
+    "piano",
+    "hip hop",
+    "acoustic",
+    "electro",
+    "jazz",
+    "noise",
+    "soundtrack",
+    "psychedelic",
+    "clinical archives"
+  ],
+  "history": {
+    "train_loss": [
+      0.6414929901611964,
+      0.5125063134287935,
+      0.47523283520505255,
+      0.43992312074418216,
+      0.41121291286366174,
+      0.3882783875735435,
+      0.37133072692839825,
+      0.35574622274155765,
+      0.3452002255643,
+      0.335451743997156
+    ],
+    "val_loss": [
+      0.4717011819834007,
+      0.44805107335515504,
+      0.43628575218339266,
+      0.438614290827319,
+      0.4308825391656354,
+      0.4274151333203507,
+      0.42928991855672394,
+      0.4211170275626173,
+      0.4285311976992605,
+      0.4273297916634817
+    ],
+    "val_macro_f1": [
+      0.0,
+      0.0,
+      0.0,
+      0.017247191011235955,
+      0.015,
+      0.0,
+      0.005714285714285714,
+      0.0,
+      0.008749999999999999,
+      0.005714285714285714
+    ],
+    "val_micro_f1": [
+      0.0,
+      0.0,
+      0.0,
+      0.02012072434607646,
+      0.01282051282051282,
+      0.0,
+      0.008968609865470852,
+      0.0,
+      0.03146067415730337,
+      0.009070294784580499
+    ],
+    "val_auc_pr": [
+      0.15576876655710478,
+      0.1760303556355232,
+      0.15449346583025284,
+      0.1263462672676164,
+      0.13803201685346964,
+      0.14729481444691306,
+      0.1480083803841493,
+      0.14112134694114267,
+      0.1516669279186605,
+      0.1565367036605836
+    ]
+  },
+  "test": {
+    "macro_f1": 0.06131585130115015,
+    "micro_f1": 0.06431780562780799,
+    "auc_pr": 0.1142012655866556,
+    "loss": 0.3895276226244952
+  },
+  "per_tag_thresholds": [
+    0.35,
+    0.3,
+    0.2,
+    0.3,
+    0.15,
+    0.25,
+    0.25,
+    0.25,
+    0.5,
+    0.2,
+    0.2,
+    0.2,
+    0.2,
+    0.2,
+    0.15,
+    0.15,
+    0.15,
+    0.25,
+    0.15,
+    0.2
+  ],
+  "example_predictions": [
+    {
+      "text": "Originally formed in Ann Arbor, Nautical Almanac's core members Twig Harper and Carly Ptak moved to Baltimore from Chicago in 2001. In search of a place to live, record music, and have shows, they bought a building that became known as  Tarantula Hill . They also started a label called  Heresee , re",
+      "true_tags": [],
+      "predicted_tags": [
+        "instrumental",
+        "rock",
+        "acoustic",
+        "jazz",
+        "psychedelic"
+      ]
+    },
+    {
+      "text": "One of the most difficult to categorize musicians in [MASK], R. Stevie Moore is a true original. Bypassing the traditional recording industry more thoroughly than just about any internationally known singer/songwriter ever has, Moore has self-released literally thousands of songs through The R. Stev",
+      "true_tags": [],
+      "predicted_tags": [
+        "instrumental",
+        "rock",
+        "hip hop",
+        "acoustic",
+        "electro",
+        "jazz",
+        "noise",
+        "psychedelic"
+      ]
+    },
+    {
+      "text": "One of the most difficult to categorize musicians in [MASK], R. Stevie Moore is a true original. Bypassing the traditional recording industry more thoroughly than just about any internationally known singer/songwriter ever has, Moore has self-released literally thousands of songs through The R. Stev",
+      "true_tags": [],
+      "predicted_tags": [
+        "instrumental",
+        "rock",
+        "hip hop",
+        "acoustic",
+        "electro",
+        "jazz",
+        "noise",
+        "psychedelic"
+      ]
+    },
+    {
+      "text": "One of the most difficult to categorize musicians in [MASK], R. Stevie Moore is a true original. Bypassing the traditional recording industry more thoroughly than just about any internationally known singer/songwriter ever has, Moore has self-released literally thousands of songs through The R. Stev",
+      "true_tags": [],
+      "predicted_tags": [
+        "instrumental",
+        "rock",
+        "hip hop",
+        "acoustic",
+        "electro",
+        "jazz",
+        "noise",
+        "psychedelic"
+      ]
+    },
+    {
+      "text": "One of the most difficult to categorize musicians in [MASK], R. Stevie Moore is a true original. Bypassing the traditional recording industry more thoroughly than just about any internationally known singer/songwriter ever has, Moore has self-released literally thousands of songs through The R. Stev",
+      "true_tags": [],
+      "predicted_tags": [
+        "instrumental",
+        "rock",
+        "hip hop",
+        "acoustic",
+        "electro",
+        "jazz",
+        "noise",
+        "psychedelic"
+      ]
+    }
+  ],
+  "dataset_sizes": {
+    "train": 3355,
+    "val": 523,
+    "test": 526
+  }
+}

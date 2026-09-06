@@ -1,0 +1,4 @@
+{
+  "note": "FMA-medium ships a handful of placeholder/truncated mp3 files (~1-2KB, undecodable) for tracks whose original audio could not be archived. These are excluded from all splits so no split silently loses samples during training. Discovered empirically by attempting to build a segment graph for every track in the official split and recording NoBackendError failures.",
+  "corrupted_track_ids": [1486, 5574, 65753, 80391, 98558, 98559, 98560, 98571, 99134, 105247, 108925, 126981, 127336, 133297, 143992]
+}

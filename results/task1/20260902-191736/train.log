@@ -1,0 +1,18 @@
+2026-09-02 19:17:36,401 [train.task1] INFO: Run directory: results/task1/20260902-191736
+2026-09-02 19:17:36,402 [train.task1] INFO: device: cuda
+2026-09-02 19:17:38,295 [train.task1] INFO: Task 1 target tag vocabulary (top-20, from TRAIN only): ['experimental', 'electronic', 'instrumental', 'classical', 'idm', 'electronica', 'horror', 'techno', 'tracks to sync', 'punk', 'rock', 'piano', 'hip hop', 'acoustic', 'electro', 'jazz', 'noise', 'soundtrack', 'psychedelic', 'clinical archives']
+2026-09-02 19:17:39,669 [train.task1] INFO: Task 1 dataset sizes: train=3355 val=523 test=526
+2026-09-02 19:17:42,303 [train.task1] INFO: Task 1 pos_weight (train-only, sqrt-smoothed, clipped): [2.8399999141693115, 2.890000104904175, 3.4200000762939453, 3.990000009536743, 4.059999942779541, 4.079999923706055, 4.46999979019165, 4.480000019073486, 4.71999979019165, 4.880000114440918, 5.059999942779541, 5.190000057220459, 5.309999942779541, 5.380000114440918, 5.559999942779541, 5.590000152587891, 5.679999828338623, 5.710000038146973, 5.860000133514404, 6.059999942779541]
+2026-09-02 19:18:02,620 [train.task1] INFO: [BERT] epoch 0: train_loss=0.6415 val_loss=0.4717 val_macro_f1=0.0000 val_micro_f1=0.0000 val_auc_pr=0.1558
+2026-09-02 19:18:26,521 [train.task1] INFO: [BERT] epoch 1: train_loss=0.5125 val_loss=0.4481 val_macro_f1=0.0000 val_micro_f1=0.0000 val_auc_pr=0.1760
+2026-09-02 19:18:50,263 [train.task1] INFO: [BERT] epoch 2: train_loss=0.4752 val_loss=0.4363 val_macro_f1=0.0000 val_micro_f1=0.0000 val_auc_pr=0.1545
+2026-09-02 19:19:10,436 [train.task1] INFO: [BERT] epoch 3: train_loss=0.4399 val_loss=0.4386 val_macro_f1=0.0172 val_micro_f1=0.0201 val_auc_pr=0.1263
+2026-09-02 19:19:32,488 [train.task1] INFO: [BERT] epoch 4: train_loss=0.4112 val_loss=0.4309 val_macro_f1=0.0150 val_micro_f1=0.0128 val_auc_pr=0.1380
+2026-09-02 19:19:55,754 [train.task1] INFO: [BERT] epoch 5: train_loss=0.3883 val_loss=0.4274 val_macro_f1=0.0000 val_micro_f1=0.0000 val_auc_pr=0.1473
+2026-09-02 19:20:15,959 [train.task1] INFO: [BERT] epoch 6: train_loss=0.3713 val_loss=0.4293 val_macro_f1=0.0057 val_micro_f1=0.0090 val_auc_pr=0.1480
+2026-09-02 19:20:39,187 [train.task1] INFO: [BERT] epoch 7: train_loss=0.3557 val_loss=0.4211 val_macro_f1=0.0000 val_micro_f1=0.0000 val_auc_pr=0.1411
+2026-09-02 19:20:59,378 [train.task1] INFO: [BERT] epoch 8: train_loss=0.3452 val_loss=0.4285 val_macro_f1=0.0087 val_micro_f1=0.0315 val_auc_pr=0.1517
+2026-09-02 19:21:21,350 [train.task1] INFO: [BERT] epoch 9: train_loss=0.3355 val_loss=0.4273 val_macro_f1=0.0057 val_micro_f1=0.0091 val_auc_pr=0.1565
+2026-09-02 19:21:21,350 [train.task1] INFO: [BERT] early stopping at epoch 9
+2026-09-02 19:21:23,710 [train.task1] INFO: Task 1 per-tag thresholds (tuned on val only): [0.35, 0.3, 0.2, 0.3, 0.15, 0.25, 0.25, 0.25, 0.5, 0.2, 0.2, 0.2, 0.2, 0.2, 0.15, 0.15, 0.15, 0.25, 0.15, 0.2]
+2026-09-02 19:21:25,498 [train.task1] INFO: [BERT] TEST: macro_f1=0.0613 micro_f1=0.0643 auc_pr=0.1142

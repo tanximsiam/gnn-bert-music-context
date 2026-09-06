@@ -1,0 +1,139 @@
+[
+  {
+    "track_id": 98078,
+    "genre": "Electronic",
+    "masked_text": "The trio first met at a friendly Scrabble evening in the countryside. Heavy in triple-word scores and assumed neologisms, the three rascals and their mischievous verbs finally got along to found the \u201cNeo-neologisms for subversive Scrabble\u201d association, an avant-garde innovative concept they proposed",
+    "num_graph_nodes": 7,
+    "num_graph_edges": 22,
+    "num_temporal_edges_approx": 20,
+    "true_tags": [
+      "electronic",
+      "punk",
+      "rock",
+      "electro"
+    ],
+    "predicted_tags_by_variant": {
+      "gnn_only": [
+        "electronic",
+        "horror",
+        "hip hop",
+        "electro"
+      ],
+      "bert_only": [
+        "experimental",
+        "electronic",
+        "instrumental",
+        "idm",
+        "electronica",
+        "punk",
+        "rock",
+        "hip hop",
+        "acoustic",
+        "electro",
+        "noise",
+        "psychedelic"
+      ],
+      "early_concat": [
+        "experimental",
+        "electronic",
+        "punk",
+        "rock",
+        "hip hop",
+        "electro"
+      ],
+      "cross_attention": [
+        "punk",
+        "hip hop",
+        "electro",
+        "noise"
+      ]
+    }
+  },
+  {
+    "track_id": 125600,
+    "genre": "Spoken",
+    "masked_text": "No artist description available.",
+    "num_graph_nodes": 6,
+    "num_graph_edges": 10,
+    "num_temporal_edges_approx": 10,
+    "true_tags": [],
+    "predicted_tags_by_variant": {
+      "gnn_only": [
+        "experimental",
+        "electronic",
+        "instrumental",
+        "idm",
+        "horror",
+        "jazz",
+        "clinical archives"
+      ],
+      "bert_only": [
+        "experimental",
+        "electronic",
+        "idm",
+        "electronica",
+        "horror",
+        "techno",
+        "hip hop",
+        "electro",
+        "noise",
+        "psychedelic"
+      ],
+      "early_concat": [
+        "experimental",
+        "electronic",
+        "idm",
+        "horror"
+      ],
+      "cross_attention": [
+        "experimental",
+        "electronic",
+        "idm",
+        "horror",
+        "rock",
+        "hip hop",
+        "electro",
+        "noise"
+      ]
+    }
+  },
+  {
+    "track_id": 5577,
+    "genre": "Rock",
+    "masked_text": "One of the most difficult to categorize musicians in [MASK], R. Stevie Moore is a true original. Bypassing the traditional recording industry more thoroughly than just about any internationally known singer/songwriter ever has, Moore has self-released literally thousands of songs through The R. Stev",
+    "num_graph_nodes": 6,
+    "num_graph_edges": 10,
+    "num_temporal_edges_approx": 10,
+    "true_tags": [],
+    "predicted_tags_by_variant": {
+      "gnn_only": [
+        "instrumental",
+        "horror"
+      ],
+      "bert_only": [
+        "experimental",
+        "electronic",
+        "instrumental",
+        "idm",
+        "punk",
+        "rock",
+        "hip hop",
+        "acoustic",
+        "electro",
+        "noise",
+        "psychedelic"
+      ],
+      "early_concat": [
+        "experimental",
+        "instrumental",
+        "horror",
+        "acoustic"
+      ],
+      "cross_attention": [
+        "experimental",
+        "instrumental",
+        "noise"
+      ]
+    }
+  }
+]

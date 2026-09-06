@@ -1,0 +1,17 @@
+# Raw and processed data are never committed.
+data/raw/
+data/processed/
+
+# Environments and caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Large artifacts
+results/checkpoints/
+*.pt
+*.ckpt
+
+# OS/editor
+.DS_Store
