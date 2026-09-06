@@ -1,6 +1,10 @@
-# Raw and processed data are never committed.
+# Raw and processed data are never committed, except the required example
+# segment-graph samples (>=20, per project deliverables). Git can't re-include
+# a path whose parent directory is excluded, so processed/ subfolders are
+# listed individually instead of blanket-excluding data/processed/.
 data/raw/
-data/processed/
+data/processed/graph_cache/
+data/processed/melspec_cache/
 
 # Environments and caches
 .venv/
@@ -12,6 +16,7 @@ __pycache__/
 results/checkpoints/
 *.pt
 *.ckpt
+!data/processed/example_graphs/*.pt
 
 # OS/editor
 .DS_Store

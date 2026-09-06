@@ -97,7 +97,7 @@ class TagTextDataset(TorchDataset):
 
 
 class MultiModalTagDataset(TorchDataset):
-    """Task 3: pairs each track's segment graph with its (masked) text and
+    """Task 3: pairs each track's segment graph with its text and
     multi-hot tag labels, for the fusion ablations."""
 
     def __init__(
@@ -158,11 +158,12 @@ def fusion_collate(batch: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def train_task1(config: dict[str, Any], run_dir: Path, logger) -> None:
-    """Task 1: leakage-safe multi-label BERT tag classifier (spec section 4.1)."""
+    """Task 1: multi-label BERT tag classifier on artist-disjoint splits."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info("device: %s", device)
 
-    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset="medium")
+    subset = config["dataset"]["name"].replace("fma_", "")
+    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset=subset)
     corrupted_ids = load_corrupted_track_ids()
     splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
 
@@ -453,12 +454,13 @@ def train_cnn_baseline(
 
 def train_task3(config: dict[str, Any], run_dir: Path, logger) -> None:
     """Task 3: GNN+BERT fusion ablations (BERT-only, GNN-only, early-concat,
-    cross-attention) on the same leakage-safe Task 1 tagged subset/splits, so
-    all four variants are directly comparable (spec: identical splits)."""
+    cross-attention) on the same Task 1 tagged subset/splits, so
+    all four variants are directly comparable."""
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info("device: %s", device)
 
-    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset="medium")
+    subset = config["dataset"]["name"].replace("fma_", "")
+    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset=subset)
     corrupted_ids = load_corrupted_track_ids()
     splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
     top_tags = build_task1_top_tags(tracks[tracks["track_id"].isin(splits["train"])], top_k=20)
@@ -677,7 +679,8 @@ def train_task2(config: dict[str, Any], run_dir: Path, logger) -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     logger.info("device: %s", device)
 
-    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset="medium")
+    subset = config["dataset"]["name"].replace("fma_", "")
+    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset=subset)
     corrupted_ids = load_corrupted_track_ids()
     splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
     label_map = build_genre_label_map(tracks)

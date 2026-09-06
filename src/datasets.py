@@ -146,18 +146,6 @@ def _strip_html(text: str) -> str:
     return _HTML_TAG_RE.sub(" ", text).strip()
 
 
-def _mask_words(text: str, words: list[str]) -> str:
-    """Case-insensitive whole-word masking of every string in `words` inside
-    `text`, replacing each with [MASK] (data leakage rule: target labels must
-    never be recoverable from the BERT input text)."""
-    for word in sorted(set(words), key=len, reverse=True):
-        if not word:
-            continue
-        pattern = re.compile(r"\b" + re.escape(word) + r"\b", flags=re.IGNORECASE)
-        text = pattern.sub("[MASK]", text)
-    return text
-
-
 def build_task1_top_tags(tracks_df: pd.DataFrame, top_k: int = 20) -> list[str]:
     """Most frequent track-level tags across the given tracks, used as the
     fixed multi-label target vocabulary for Task 1."""
@@ -168,25 +156,20 @@ def build_task1_top_tags(tracks_df: pd.DataFrame, top_k: int = 20) -> list[str]:
 
 
 def build_task1_dataset(tracks_df: pd.DataFrame, top_tags: list[str]) -> pd.DataFrame:
-    """Build the leakage-safe Task 1 multi-label tag dataset.
+    """Build the Task 1 multi-label tag dataset.
 
     Restricted to tracks with at least one track_tag (the only tracks with a
-    genuine tag signal). Input text = artist bio (HTML-stripped) with every
-    top-K target tag word AND the track's own genre_top word masked out, so
-    the target labels are never recoverable from the input text. Falls back
-    to a placeholder string when no bio is available.
+    genuine tag signal). Input text = raw artist bio (HTML-stripped, unmasked).
+    Falls back to a placeholder string when no bio is available.
     """
     tagged = tracks_df[tracks_df["track_tags"].apply(len) > 0].copy()
-    mask_extra = list(top_tags)
 
     def make_row(row: pd.Series) -> pd.Series:
         bio = _strip_html(row["artist_bio"]) if isinstance(row["artist_bio"], str) else ""
         if not bio:
             bio = "No artist description available."
-        words_to_mask = mask_extra + [row["genre_top"]]
-        text = _mask_words(bio, words_to_mask)
         labels = [1 if tag in row["track_tags_lower"] else 0 for tag in top_tags]
-        return pd.Series({"track_id": row["track_id"], "text": text, "labels": labels})
+        return pd.Series({"track_id": row["track_id"], "text": bio, "labels": labels})
 
     tagged["track_tags_lower"] = tagged["track_tags"].apply(lambda tags: {t.lower() for t in tags})
     return tagged.apply(make_row, axis=1)

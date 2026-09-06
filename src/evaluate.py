@@ -19,22 +19,142 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from sklearn.manifold import TSNE
+from sklearn.metrics import average_precision_score, f1_score
 from torch.utils.data import DataLoader as TorchDataLoader
+from torch_geometric.loader import DataLoader as PyGDataLoader
 from transformers import AutoTokenizer
 
 from src.bert_encoder import BertTagClassifier
 from src.datasets import (
     build_task1_dataset,
-    build_task1_top_tags,
     load_corrupted_track_ids,
     load_fma_metadata,
     load_fma_splits,
 )
 from src.fusion_model import FusionModel
 from src.gnn_model import GNNGenreClassifier
-from src.graph_builder import build_or_load_track_graph
-from src.train import MultiModalTagDataset, fusion_collate
+from src.graph_builder import SegmentGraphDataset, build_or_load_track_graph
+from src.train import MultiModalTagDataset, TagTextDataset, fusion_collate
 from src.utils import get_logger, load_config
+
+
+def _mean_auc_pr(labels: np.ndarray, probs: np.ndarray) -> float:
+    scores = [
+        average_precision_score(labels[:, k], probs[:, k]) for k in range(labels.shape[1]) if labels[:, k].sum() > 0
+    ]
+    return float(np.mean(scores)) if scores else 0.0
+
+
+def run_task1_evaluation(config: dict, checkpoint_path: str, logger) -> None:
+    """Reload a trained Task 1 BERT checkpoint and recompute test metrics
+    independently of train.py, using the same tag vocabulary and per-tag
+    thresholds recorded in that run's metrics.json (tuned on validation only)."""
+    run_dir = Path(checkpoint_path).parent
+    metrics_path = run_dir / "metrics.json"
+    if not metrics_path.exists():
+        raise FileNotFoundError(f"{metrics_path} not found — run `python -m src.train --task 1` first.")
+    with metrics_path.open() as f:
+        train_metrics = json.load(f)
+    top_tags = train_metrics["top_tags"]
+    thresholds = np.array(train_metrics["per_tag_thresholds"])
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    subset = config["dataset"]["name"].replace("fma_", "")
+    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset=subset)
+    corrupted_ids = load_corrupted_track_ids()
+    splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
+    task1_df = build_task1_dataset(tracks, top_tags)
+    split_of = {tid: name for name, ids in splits.items() for tid in ids}
+    task1_df = task1_df.assign(split=task1_df["track_id"].map(split_of))
+    test_df = task1_df[task1_df["split"] == "test"]
+
+    tokenizer = AutoTokenizer.from_pretrained(config["bert"]["model_name"])
+    test_ds = TagTextDataset(test_df, tokenizer, config["bert"]["max_length"])
+    test_loader = TorchDataLoader(test_ds, batch_size=config["training"]["batch_size"], shuffle=False)
+
+    model = BertTagClassifier(
+        config["bert"]["model_name"], num_tags=len(top_tags), freeze_layers=config["bert"]["freeze_layers"]
+    ).to(device)
+    model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    model.eval()
+
+    all_probs, all_labels = [], []
+    with torch.no_grad():
+        for batch in test_loader:
+            logits = model(batch["input_ids"].to(device), batch["attention_mask"].to(device))
+            all_probs += torch.sigmoid(logits).cpu().tolist()
+            all_labels += batch["labels"].tolist()
+    probs, labels = np.array(all_probs), np.array(all_labels)
+    preds = (probs >= thresholds).astype(int)
+    result = {
+        "checkpoint": str(checkpoint_path),
+        "macro_f1": f1_score(labels, preds, average="macro", zero_division=0),
+        "micro_f1": f1_score(labels, preds, average="micro", zero_division=0),
+        "auc_pr": _mean_auc_pr(labels, probs),
+        "num_test": len(test_df),
+    }
+    logger.info("[Task 1 eval] macro_f1=%.4f micro_f1=%.4f auc_pr=%.4f", result["macro_f1"], result["micro_f1"], result["auc_pr"])
+    out_path = Path("results/metrics") / f"task1_eval_{run_dir.name}.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w") as f:
+        json.dump(result, f, indent=2)
+    logger.info("Saved %s", out_path)
+
+
+def run_task2_evaluation(config: dict, checkpoint_path: str, logger) -> None:
+    """Reload a trained Task 2 GNN checkpoint and recompute test metrics
+    independently of train.py, using the genre label map recorded in that
+    run's metrics.json."""
+    run_dir = Path(checkpoint_path).parent
+    metrics_path = run_dir / "metrics.json"
+    if not metrics_path.exists():
+        raise FileNotFoundError(f"{metrics_path} not found — run `python -m src.train --task 2` first.")
+    with metrics_path.open() as f:
+        train_metrics = json.load(f)
+    label_map = train_metrics["label_map"]
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    subset = config["dataset"]["name"].replace("fma_", "")
+    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset=subset)
+    corrupted_ids = load_corrupted_track_ids()
+    splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
+
+    cache_dir = Path("data/processed/graph_cache")
+    test_ds = SegmentGraphDataset(
+        splits["test"], tracks_df=tracks, audio_root=config["dataset"]["root"], cache_dir=cache_dir,
+        label_map=label_map, audio_config=config["audio"], graph_config=config["graph"],
+        sample_rate=config["dataset"]["sample_rate"],
+    )
+    test_loader = PyGDataLoader(test_ds, batch_size=config["training"]["batch_size"], shuffle=False, num_workers=4)
+
+    in_dim = 2 * config["audio"]["n_mfcc"] + (24 if config["audio"]["use_chroma"] else 0)
+    model = GNNGenreClassifier(
+        in_dim=in_dim, hidden_dim=config["gnn"]["hidden_dim"], num_layers=config["gnn"]["num_layers"],
+        num_classes=len(label_map), dropout=config["gnn"]["dropout"], model=config["gnn"]["model"],
+    ).to(device)
+    model.load_state_dict(torch.load(checkpoint_path, map_location=device))
+    model.eval()
+
+    all_preds, all_labels = [], []
+    with torch.no_grad():
+        for batch in test_loader:
+            batch = batch.to(device)
+            logits = model(batch.x, batch.edge_index, batch.batch)
+            all_preds += logits.argmax(-1).tolist()
+            all_labels += batch.y.tolist()
+
+    result = {
+        "checkpoint": str(checkpoint_path),
+        "macro_f1": f1_score(all_labels, all_preds, average="macro", zero_division=0),
+        "micro_f1": f1_score(all_labels, all_preds, average="micro", zero_division=0),
+        "num_test": len(all_labels),
+    }
+    logger.info("[Task 2 eval] macro_f1=%.4f micro_f1=%.4f", result["macro_f1"], result["micro_f1"])
+    out_path = Path("results/metrics") / f"task2_eval_{run_dir.name}.json"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w") as f:
+        json.dump(result, f, indent=2)
+    logger.info("Saved %s", out_path)
 
 
 def parse_args() -> argparse.Namespace:
@@ -47,7 +167,7 @@ def parse_args() -> argparse.Namespace:
 
 def run_task3_analysis(config: dict, checkpoint_path: str, logger) -> None:
     """Phase 10: t-SNE of the fused embedding z (colored by genre) + 3 case
-    studies (graph structure + masked text + true/predicted tags across all
+    studies (graph structure + text + true/predicted tags across all
     4 ablation variants). Requires a completed `train_task3` run directory
     (with per-variant *_best_model.pt checkpoints and metrics.json)."""
     run_dir = Path(checkpoint_path).parent
@@ -60,7 +180,8 @@ def run_task3_analysis(config: dict, checkpoint_path: str, logger) -> None:
     num_labels = len(top_tags)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset="medium")
+    subset = config["dataset"]["name"].replace("fma_", "")
+    tracks = load_fma_metadata(config["dataset"]["metadata_root"], subset=subset)
     corrupted_ids = load_corrupted_track_ids()
     splits = load_fma_splits(tracks, exclude_track_ids=corrupted_ids)
     task_df = build_task1_dataset(tracks, top_tags)
@@ -152,7 +273,7 @@ def _load_variant_model(variant: str, config: dict, run_dir: Path, num_labels: i
 
 
 def _save_case_studies(config, run_dir, task3_metrics, tracks, test_df, top_tags, device, logger) -> None:
-    """3 case studies: graph structure + masked text + true tags vs. each
+    """3 case studies: graph structure + text + true tags vs. each
     ablation variant's predicted tags (using its own tuned thresholds)."""
     rng = np.random.RandomState(42)
     sample_rows = test_df.iloc[rng.choice(len(test_df), size=min(3, len(test_df)), replace=False)]
@@ -198,7 +319,7 @@ def _save_case_studies(config, run_dir, task3_metrics, tracks, test_df, top_tags
         case_studies.append({
             "track_id": int(track_id),
             "genre": tracks.set_index("track_id").loc[track_id, "genre_top"],
-            "masked_text": row["text"][:300],
+            "text": row["text"][:300],
             "num_graph_nodes": int(graph.x.shape[0]),
             "num_graph_edges": int(graph.edge_index.shape[1]),
             "num_temporal_edges_approx": num_temporal,
@@ -218,13 +339,15 @@ def main() -> None:
     logger.info("Evaluating checkpoint: %s", args.checkpoint)
 
     if args.task == 1:
-        raise NotImplementedError("Task 1 evaluation implemented in Phase 6.")
+        run_task1_evaluation(config, args.checkpoint, logger)
+        return
     if args.task == 2:
-        raise NotImplementedError("Task 2 evaluation implemented in Phases 4-5.")
+        run_task2_evaluation(config, args.checkpoint, logger)
+        return
     if args.task == 3:
         run_task3_analysis(config, args.checkpoint, logger)
         return
-    raise NotImplementedError("Task 4 (optional) evaluation implemented in Phase 12.")
+    raise NotImplementedError("Task 4 evaluation implemented in Phase 12.")
 
 
 if __name__ == "__main__":

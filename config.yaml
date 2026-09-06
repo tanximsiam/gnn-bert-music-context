@@ -15,7 +15,8 @@ audio:
   use_chroma: true
 
 graph:
-  type: segment             # segment | chord
+  type: segment             # only 'segment' is implemented (src/graph_builder.py); 'chord'
+                             # would need a symbolic MIDI source (not used in this project)
   # tau for cosine-similarity edges, computed on per-track z-scored node features.
   # 0.3 was chosen empirically on FMA-medium (~top 10% most-similar segment pairs
   # beyond immediate temporal neighbors); re-tune if features/dataset change.
@@ -38,15 +39,18 @@ fusion:
   mode: cross_attention       # early_concat | cross_attention
 
 # Optional DEAM valence/arousal auxiliary loss for Task 3 (spec section 4.3).
-# Disabled by default (alpha=beta=0); requires DEAM dataset download, which
-# must be explicitly approved by the user before src/datasets.py fetches it.
+# Optional DEAM valence/arousal auxiliary loss for Task 3. NOT wired into
+# train_task3 (kept disabled): DEAM's official distribution requires manual
+# email registration at the dataset owner's site, so it cannot be fetched
+# automatically by src/datasets.py:load_deam (still a stub). Flip to true only
+# once DEAM audio+annotations are manually placed at dataset_root.
 emotion:
-  enabled: true
+  enabled: false
   dataset_root: data/raw/deam
   alpha: 0.1
   beta: 0.1
 
-# Task 4 (optional/bonus) contrastive retrieval config. Not used by Tasks 1-3.
+# Task 4 contrastive retrieval config (MusicCaps).
 contrastive:
   enabled: false
   dataset_root: data/raw/musiccaps

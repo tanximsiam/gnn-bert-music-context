@@ -3,6 +3,7 @@ adjacency (i <-> i+1) plus cosine-similarity edges (cosine(f_i, f_j) > tau).
 """
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -58,11 +59,14 @@ def build_segment_graph(
             edges.append((i + 1, i))
             edge_types.append("temporal")
 
-    # B. Similarity edges: cosine(feature_i, feature_j) > tau
+    # B. Similarity edges: cosine(feature_i, feature_j) > tau. Skip adjacent pairs
+    # (|i-j| == 1) since those are already connected by a temporal edge above —
+    # otherwise the same (i, j) pair would be added twice, silently doubling that
+    # neighbor's weight under mean/sum aggregation.
     sim = _cosine_similarity_matrix(node_features)
     for i in range(num_nodes):
         for j in range(num_nodes):
-            if i == j:
+            if i == j or abs(i - j) == 1:
                 continue
             if not bidirectional and j < i:
                 continue
@@ -140,8 +144,18 @@ def build_or_load_track_graph(
     bidirectional: bool,
     self_loops: bool,
 ) -> Data:
-    """Build a track's segment graph (or load it from cache if already built)."""
-    cache_path = Path(cache_dir) / f"{track_id:06d}.pt"
+    """Build a track's segment graph (or load it from cache if already built).
+
+    The cache filename embeds a short hash of every parameter that affects the
+    resulting graph/features, so changing segment length, MFCC count, chroma,
+    tau, etc. automatically invalidates stale cached graphs instead of silently
+    reusing them.
+    """
+    cache_key = hashlib.sha1(
+        f"{sample_rate}-{segment_seconds}-{n_mfcc}-{use_chroma}-"
+        f"{similarity_threshold}-{bidirectional}-{self_loops}".encode()
+    ).hexdigest()[:8]
+    cache_path = Path(cache_dir) / f"{track_id:06d}_{cache_key}.pt"
     if cache_path.exists():
         return torch.load(cache_path, weights_only=False)
 

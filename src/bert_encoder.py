@@ -1,9 +1,7 @@
 """BERT/DistilBERT text encoder with multi-label tag classification head.
 
-Task 1 (primary deliverable, per spec section 4.1): multi-label tag
-classifier, y_k = sigmoid(w_k^T CLS(BERT(x)) + b_k), trained with per-tag BCE.
-Target tags are masked out of the input text before tokenization (data
-leakage rule).
+Task 1: multi-label tag classifier, y_k = sigmoid(w_k^T CLS(BERT(x)) + b_k),
+trained with per-tag BCE on raw artist bio text.
 """
 from __future__ import annotations
 

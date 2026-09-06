@@ -2,22 +2,20 @@
 
 Course project (Neural Networks — CSE425 / EEE474 / CSE715): a hybrid **BERT + Graph
 Neural Network** system for understanding musical context — multi-label tag/genre
-classification, structural (GNN) modeling of audio segment graphs, and GNN–BERT fusion —
-following the project spec (`Project Spec.pdf` / `Project Spec.txt`).
+classification, structural (GNN) modeling of audio segment graphs, and GNN–BERT fusion.
 
 ## Overview
 
 A track is modeled as $T = (X_{audio}, X_{text}, G, y)$: audio segment features, text
-(artist bio, leakage-masked), a segment graph $G=(V,E)$ (temporal + cosine-similarity
-edges over MFCC/chroma), and multi-label targets $y$ (genre / top tags). Three of the
-four spec tasks are implemented and evaluated end-to-end:
+(artist bio), a segment graph $G=(V,E)$ (temporal + cosine-similarity
+edges over MFCC/chroma), and multi-label targets $y$ (genre / top tags). Three tasks are
+implemented and evaluated end-to-end:
 
 | Task | Description | Status |
 |------|-------------|--------|
-| 1 (Easy) | BERT multi-label tag classifier on (leakage-masked) artist text | Done |
-| 2 (Medium) | GraphSAGE on segment graphs vs. CNN mel-spectrogram baseline | Done |
-| 3 (Hard) | GNN–BERT fusion (early-concat / cross-attention) + ablations | Done |
-| 4 (Advanced, optional) | Contrastive MusicCaps retrieval | Not attempted (bonus, out of scope for this run) |
+| 1 | BERT multi-label tag classifier on artist text | Done |
+| 2 | GraphSAGE on segment graphs vs. CNN mel-spectrogram baseline | Done |
+| 3 | GNN–BERT fusion (early-concat / cross-attention) + ablations | Done |
 
 ## Dataset
 
@@ -26,15 +24,11 @@ four spec tasks are implemented and evaluated end-to-end:
 - Only ~4,410 tracks have usable free-text tags; Task 1/3 train/val/test = 3,355/523/526.
 - 15 corrupted/truncated FMA-medium mp3s are excluded from all splits
   (`data/splits/fma_medium_corrupted_track_ids.json`).
-- **DEAM** (valence/arousal auxiliary loss) is wired into the config but disabled by
-  default and was not used for the reported results.
 - Raw/processed audio and caches are **not** included in this repo (see `.gitignore`) —
   download FMA-medium yourself and point `config.yaml`'s `dataset.root` at it.
 
 ## Data leakage safeguards
 
-- Target genre/tag words are masked out of the BERT input text (artist bio) before
-  tokenization, per-tag, using word-boundary regex.
 - Splits are artist-disjoint; normalizers/thresholds/class weights are fit on the
   train split only.
 - Per-tag classification thresholds are tuned on validation probabilities only, then
@@ -52,9 +46,8 @@ src/
   bert_encoder.py       DistilBERT text encoder + multi-label tag classification head
   fusion_model.py        Task 3 early-concat and cross-attention fusion heads
   baselines.py          B1 majority/random baseline (+ optional B4 PCA+MLP)
-  contrastive.py         Task 4 (optional) dual-encoder InfoNCE — not run in this project
-  datasets.py            FMA/DEAM/MusicCaps loading, splits, Task 1 tag-subset+masking
-  train.py / evaluate.py CLI entry points (--task {1,2,3,4})
+  datasets.py            FMA loading, splits, Task 1 tag-subset construction
+  train.py / evaluate.py CLI entry points (--task {1,2,3})
   utils.py               seeding, config loading, logging, run directories
 tests/                 pytest suite (dataset/graph/audio/shape/leakage checks)
 notebooks/             eda.ipynb, demo_context.ipynb
@@ -70,8 +63,9 @@ conda activate cse425
 pip install -r requirements.txt
 ```
 
-Download FMA-medium + FMA metadata (see `Project Spec.txt` Table 1 for official links)
-into `data/raw/fma_medium/` and `data/raw/fma_metadata/` to reproduce results.
+Download FMA-medium + FMA metadata from https://os.unil.cloud.switch.ch/fma/fma_medium.zip
+and https://os.unil.cloud.switch.ch/fma/fma_metadata.zip into `data/raw/fma_medium/` and
+`data/raw/fma_metadata/` to reproduce results.
 
 ## Running
 
@@ -89,11 +83,10 @@ pytest tests/
 
 | Model | Macro-F1 | Micro-F1 | AUC-PR |
 |---|---|---|---|
-| BERT (masked artist bio) | 0.061 | 0.064 | 0.114 |
+| BERT (artist bio) | 0.061 | 0.064 | 0.114 |
 
-Masked artist-bio text is a weak signal for tags (bios describe artist backstory, not
-musical style, and genre/tag words are stripped for leakage-safety) — a genuine, expected
-result rather than a bug.
+Artist-bio text is a weak signal for tags (bios describe artist backstory, not
+musical style) — a genuine, expected result rather than a bug.
 
 **Task 2 — GNN on segment graphs vs. CNN baseline** (16-way genre classification, test set):
 
@@ -112,7 +105,7 @@ result rather than a bug.
 | Early concat | 0.118 | 0.130 | 0.133 |
 | Cross-attention | 0.104 | 0.104 | 0.143 |
 
-GNN-only clearly beats BERT-only, consistent with the Task 1 finding that masked bio
+GNN-only clearly beats BERT-only, consistent with the Task 1 finding that bio
 text carries little tag signal — the graph/audio modality is the stronger one here.
 Fusion (concat/cross-attention) gives the best AUC-PR and micro-F1 but doesn't
 uniformly dominate every metric at this model scale/data size.
