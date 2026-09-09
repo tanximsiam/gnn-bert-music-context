@@ -1,0 +1,33 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: gnn-bert-music-context/requirements.txt
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies
+        working-directory: gnn-bert-music-context
+        run: pip install -r requirements.txt
+
+      # Raw FMA/MusicCaps data is never committed to the repo (see .gitignore),
+      # so data-dependent tests (test_audio_features.py, test_splits.py)
+      # auto-skip via their requires_fma_* markers instead of failing.
+      - name: Run tests
+        working-directory: gnn-bert-music-context
+        run: python -m pytest tests/ -v

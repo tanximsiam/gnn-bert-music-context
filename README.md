@@ -1,5 +1,7 @@
 # GNN-Based BERT for Understanding Context from Music
 
+[![Tests](https://github.com/tanximsiam/gnn-bert-music-context/actions/workflows/tests.yml/badge.svg)](https://github.com/tanximsiam/gnn-bert-music-context/actions/workflows/tests.yml)
+
 Course project (Neural Networks — CSE425 / EEE474 / CSE715): a hybrid **BERT + Graph
 Neural Network** system for understanding musical context — multi-label tag/genre
 classification, structural (GNN) modeling of audio segment graphs, and GNN–BERT fusion.
@@ -97,7 +99,7 @@ python -m src.train --task 1 --freeze-layers 2                     # BERT tag cl
 python -m src.train --task 3 --freeze-layers 2                     # fusion + ablations
 python -m src.train --task 4                                       # contrastive dual-encoder
 python -m src.evaluate --task {1,2,3,4} --checkpoint PATH
-pytest tests/
+python -m pytest tests/
 ```
 
 ## Results
@@ -159,8 +161,32 @@ Full metrics, training curves, t-SNE plots, and case studies are in `results/tas
 ## Tests
 
 ```bash
-pytest tests/
+python -m pytest tests/
 ```
+
+(use `python -m pytest`, not a bare `pytest` — the tests import `src` as a package,
+which requires running from this directory with the current directory on `sys.path`.)
 
 Covers dataset loading/splits (artist-disjointness, corrupted-track exclusion), audio
 feature extraction, graph construction, tensor shapes, and no-label-leakage checks.
+Data-dependent tests (audio/splits) auto-skip if `data/raw/` isn't populated. A GitHub
+Actions workflow (`.github/workflows/tests.yml`) runs the full suite on every push/PR to
+`main` (badge above) — data-dependent tests skip there too, since raw datasets are never
+committed.
+
+## Reproducing the demo notebook
+
+`notebooks/demo_context.ipynb` loads a trained Task 3 checkpoint
+(`early_concat_best_model.pt`) from `results/task3/20260907-015512/`. Checkpoints are
+**not committed to git** (`*.pt` is gitignored — the fusion checkpoints are ~250MB each,
+too large for a plain git repo), so the notebook will fail with a `FileNotFoundError` on
+a fresh clone until you train it yourself:
+
+```bash
+python -m src.musiccaps_prep --fetch-metadata --download-audio   # Task 1/4 need MusicCaps
+python -m src.train --task 1 --freeze-layers 2                   # produces results/task1/<run>/
+python -m src.train --task 3 --freeze-layers 2                   # produces results/task3/<run>/early_concat_best_model.pt
+```
+
+Then update `RUN_DIR` near the top of the notebook to point at your new
+`results/task3/<run>/` directory before running it end-to-end.
